@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-navy-50 text-navy-900 font-sans;
+  }
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    height: auto;
+    line-height: 1.25rem;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-navy-600 hover:bg-navy-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-150 flex items-center gap-2;
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-navy-50 text-navy-600 border border-navy-200 px-4 py-2 rounded-lg font-medium transition-colors duration-150 flex items-center gap-2;
+  }
+  .btn-danger {
+    @apply bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition-colors duration-150;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-navy-100 p-5;
+  }
+  .input {
+    @apply w-full border border-navy-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 bg-white;
+  }
+  .label {
+    @apply block text-sm font-medium text-navy-700 mb-1;
+  }
+  .section-title {
+    @apply text-lg font-semibold text-navy-800 mb-4;
+  }
+  .nav-link {
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150;
+  }
+  .nav-link-active {
+    @apply bg-navy-600 text-white;
+  }
+  .nav-link-inactive {
+    @apply text-navy-200 hover:bg-navy-700 hover:text-white;
+  }
+}
