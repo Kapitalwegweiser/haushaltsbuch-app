@@ -12,6 +12,7 @@ import FixkostenSeite from './components/FixkostenSeite'
 import FinanzScore from './components/FinanzScore'
 import Wachstumsprognose from './components/Wachstumsprognose'
 import Onboarding from './components/Onboarding'
+import AppTour from './components/AppTour'
 import LoginSeite from './components/LoginSeite'
 import { Loader2, LogOut } from 'lucide-react'
 
@@ -61,6 +62,7 @@ function AppInner() {
 
   // Onboarding: direkt aus localStorage lesen/schreiben nach User-ID (nicht über Hook mit dynamischem Key)
   const [onboardingAbgeschlossen, setOnboardingAbgeschlossenState] = useState(false)
+  const [tourAbgeschlossen, setTourAbgeschlossenState] = useState(false)
   const onboardingInitialisiert = useRef(false)
 
   useEffect(() => {
@@ -71,6 +73,7 @@ function AppInner() {
       // Auch alten globalen Key prüfen (Migration)
       const altKey = localStorage.getItem('kw_onboarding_done_v3')
       setOnboardingAbgeschlossenState(gespeichert === 'true' || altKey === 'true')
+      setTourAbgeschlossenState(localStorage.getItem(`kw_tour_done_${user.id}`) === 'true')
     }
   }, [user?.id])
 
@@ -78,6 +81,13 @@ function AppInner() {
     setOnboardingAbgeschlossenState(val)
     if (user?.id) {
       localStorage.setItem(`kw_onboarding_done_${user.id}`, String(val))
+    }
+  }
+
+  function tourSchliessen() {
+    setTourAbgeschlossenState(true)
+    if (user?.id) {
+      localStorage.setItem(`kw_tour_done_${user.id}`, 'true')
     }
   }
 
@@ -144,6 +154,8 @@ function AppInner() {
     }
   }
 
+  const sollTourZeigen = onboardingAbgeschlossen && !tourAbgeschlossen
+
   return (
     <div className="flex min-h-screen">
       {sollteOnboardingZeigen && (
@@ -151,6 +163,12 @@ function AppInner() {
           onAbschliessen={() => setOnboardingAbgeschlossen(true)}
           setEinnahmen={setEinnahmen}
           setFixkosten={setFixkosten}
+        />
+      )}
+      {!sollteOnboardingZeigen && sollTourZeigen && (
+        <AppTour
+          onSchliessen={tourSchliessen}
+          userName={user.user_metadata?.full_name}
         />
       )}
 
