@@ -40,20 +40,20 @@ export default function LoginSeite() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#f7f3ed' }}>
       <div className="w-full max-w-sm">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-navy-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <BarChart2 size={32} className="text-gold" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#321f13' }}>
+            <BarChart2 size={32} className="text-white" />
           </div>
-          <h1 className="text-white font-bold text-2xl">Kapitalwegweiser</h1>
-          <p className="text-navy-300 text-sm mt-1">Dein persönliches Haushaltsbuch</p>
+          <h1 className="font-serif text-navy-700 text-3xl font-semibold tracking-wide">Kapitalwegweiser</h1>
+          <p className="text-navy-400 text-xs mt-2 uppercase tracking-widest">Dein unabhängiger Kompass für Finanzen & Vermögen</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
+        <div className="bg-white rounded-2xl shadow-md border border-navy-100 p-6">
           {modus === 'login' && (
             <>
               <h2 className="text-xl font-bold text-navy-800 mb-5">Willkommen zurück</h2>
@@ -182,8 +182,8 @@ export default function LoginSeite() {
           )}
         </div>
 
-        <p className="text-center text-navy-500 text-xs mt-6">
-          © Kapitalwegweiser · Deine Daten werden sicher in der EU gespeichert.
+        <p className="text-center text-navy-400 text-xs mt-6 uppercase tracking-widest">
+          © Kapitalwegweiser · EU-Server · DSGVO-konform
         </p>
       </div>
     </div>

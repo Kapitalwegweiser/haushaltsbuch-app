@@ -76,21 +76,21 @@ export default function Onboarding({ onAbschliessen, setEinnahmen, setFixkosten 
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
 
         {/* Header */}
-        <div className="bg-navy-800 px-6 py-5">
+        <div className="bg-brand-600 px-6 py-5">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-white font-bold text-lg">Kapitalwegweiser</h1>
-            <span className="text-navy-300 text-xs">Haushaltsbuch</span>
+            <span className="text-brand-400 text-xs">Haushaltsbuch</span>
           </div>
           {/* Fortschrittsbalken */}
           {schritt > 0 && (
             <div className="flex gap-2 items-center">
               {SCHRITTE.map((s, i) => (
                 <div key={s.nr} className="flex items-center gap-2 flex-1">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${schritt > i ? 'bg-gold text-white' : schritt === i ? 'bg-white text-navy-800' : 'bg-navy-600 text-navy-300'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${schritt > i ? 'bg-gold text-white' : schritt === i ? 'bg-white text-brand-600' : 'bg-brand-500 text-brand-400'}`}>
                     {schritt > i ? <CheckCircle size={14} /> : s.nr}
                   </div>
-                  <span className={`text-xs hidden sm:block ${schritt === i ? 'text-white font-medium' : 'text-navy-400'}`}>{s.label}</span>
-                  {i < SCHRITTE.length - 1 && <div className={`flex-1 h-0.5 ${schritt > i ? 'bg-gold' : 'bg-navy-600'}`} />}
+                  <span className={`text-xs hidden sm:block ${schritt === i ? 'text-white font-medium' : 'text-brand-400'}`}>{s.label}</span>
+                  {i < SCHRITTE.length - 1 && <div className={`flex-1 h-0.5 ${schritt > i ? 'bg-gold' : 'bg-brand-500'}`} />}
                 </div>
               ))}
             </div>

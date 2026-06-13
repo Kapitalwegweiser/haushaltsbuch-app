@@ -4,7 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-navy-50 text-navy-900 font-sans;
+    @apply bg-navy-50 text-navy-600 font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-serif text-navy-700;
   }
   input[type="date"] {
     -webkit-appearance: none;
@@ -12,42 +16,88 @@
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    height: auto;
+    padding-top: 0;
+    padding-bottom: 0;
     line-height: 1.25rem;
   }
 }
 
 @layer components {
+
+  /* ── Buttons ── */
   .btn-primary {
-    @apply bg-navy-600 hover:bg-navy-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-150 flex items-center gap-2;
+    @apply bg-brand-500 hover:bg-brand-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow;
   }
   .btn-secondary {
-    @apply bg-white hover:bg-navy-50 text-navy-600 border border-navy-200 px-4 py-2 rounded-lg font-medium transition-colors duration-150 flex items-center gap-2;
+    @apply bg-white hover:bg-navy-50 text-navy-600 border border-navy-200 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2;
   }
   .btn-danger {
-    @apply bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition-colors duration-150;
+    @apply bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150;
   }
+
+  /* ── Cards ── */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-navy-100 p-5;
+    @apply bg-white rounded-xl p-5;
+    border: 1px solid #e8dece;
+    box-shadow: 0 1px 4px rgba(50, 31, 19, 0.05), 0 4px 16px rgba(50, 31, 19, 0.04);
   }
+
+  /* ── Form elements ── */
   .input {
-    @apply w-full border border-navy-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 bg-white;
+    @apply w-full border rounded-lg px-3.5 text-sm transition-colors duration-150 bg-white text-navy-700 placeholder-navy-300;
+    border-color: #d8ccba;
+    height: 2.5rem;
+    line-height: 1.25rem;
+  }
+  .input:focus {
+    @apply outline-none;
+    border-color: #2e6b52;
+    box-shadow: 0 0 0 3px rgba(46, 107, 82, 0.12);
+  }
+  select.input {
+    appearance: auto;
+    padding-top: 0;
+    padding-bottom: 0;
   }
   .label {
-    @apply block text-sm font-medium text-navy-700 mb-1;
+    @apply block text-navy-400 mb-1.5 font-medium;
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
   }
+
+  /* ── Typography ── */
   .section-title {
-    @apply text-lg font-semibold text-navy-800 mb-4;
+    @apply font-serif font-semibold text-navy-700 mb-5;
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
+
+  /* ── Navigation ── */
   .nav-link {
-    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150;
   }
+  /* White elevated pill on cream sidebar = refined active state */
   .nav-link-active {
-    @apply bg-navy-600 text-white;
+    @apply bg-white text-brand-600 font-semibold;
+    box-shadow: 0 1px 3px rgba(50, 31, 19, 0.10);
   }
   .nav-link-inactive {
-    @apply text-navy-200 hover:bg-navy-700 hover:text-white;
+    @apply text-navy-500 hover:text-navy-700 hover:bg-white/50;
+  }
+
+  /* ── Status badges ── */
+  .badge {
+    @apply inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+  .badge-green {
+    @apply badge bg-brand-500/10 text-brand-600;
+  }
+  .badge-amber {
+    @apply badge bg-amber-50 text-amber-700 border border-amber-200;
+  }
+  .badge-muted {
+    @apply badge bg-navy-100 text-navy-500;
   }
 }

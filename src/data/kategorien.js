@@ -23,13 +23,24 @@ export const VARIABLE_KATEGORIEN = [
 ]
 
 export const INTERVALL_OPTIONEN = [
-  { wert: 'monatlich', label: 'Monatlich', faktor: 1 },
+  { wert: 'monatlich',     label: 'Monatlich',     faktor: 1 },
   { wert: 'quartalsweise', label: 'Quartalsweise', faktor: 1 / 3 },
-  { wert: 'halbjaehrlich', label: 'Halbjährlich', faktor: 1 / 6 },
-  { wert: 'jaehrlich', label: 'Jährlich', faktor: 1 / 12 },
+  { wert: 'halbjaehrlich', label: 'Halbjährlich',  faktor: 1 / 6 },
+  { wert: 'jaehrlich',     label: 'Jährlich',      faktor: 1 / 12 },
+]
+
+export const MONATE = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ]
 
 export function monatlicherBetrag(betrag, intervall) {
   const opt = INTERVALL_OPTIONEN.find(o => o.wert === intervall)
   return betrag * (opt?.faktor ?? 1)
+}
+
+// Nur reguläre (wiederkehrende) Einnahmen pro Monat — ohne Sondereinnahmen
+export function monatlicheEinnahme(eintrag) {
+  if (eintrag.typ === 'sondereinnahme') return 0
+  return monatlicherBetrag(eintrag.betrag, eintrag.intervall)
 }
