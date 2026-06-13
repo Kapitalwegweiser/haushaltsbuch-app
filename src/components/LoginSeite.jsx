@@ -118,7 +118,7 @@ export default function LoginSeite() {
                     <input className="input pl-9" type="text" placeholder="z. B. Max Mustermann"
                       value={name} onChange={e => setName(e.target.value)} autoFocus />
                   </div>
-                  <p className="text-navy-400 text-xs mt-1">So wirst du im Portal begrüßt.</p>
+                  <p className="text-navy-400 text-xs mt-1">So wirst du in Zukunft genannt.</p>
                 </div>
                 <div>
                   <label className="label">E-Mail</label>

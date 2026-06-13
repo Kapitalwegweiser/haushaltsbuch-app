@@ -11,7 +11,7 @@ export default function Startseite({ user, einnahmen, fixkosten, immobilien = []
   const sparBetrag = einnahmenSumme - fixSumme
   const sparquote = einnahmenSumme > 0 ? (sparBetrag / einnahmenSumme) * 100 : null
 
-  const vorname = user.email.split('@')[0]
+  const vorname = user.user_metadata?.full_name || user.email.split('@')[0]
 
   function navigiere(modul, seite) {
     setAktivesModul(modul)
