@@ -45,8 +45,8 @@ export default function LoginSeite() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#321f13' }}>
-            <BarChart2 size={32} className="text-white" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border" style={{ background: '#fff', borderColor: '#d8ccb8' }}>
+            <BarChart2 size={32} style={{ color: '#2e6b52' }} />
           </div>
           <h1 className="font-serif text-navy-700 text-3xl font-semibold tracking-wide">Kapitalwegweiser</h1>
           <p className="text-navy-400 text-xs mt-2 uppercase tracking-widest">Dein unabhängiger Kompass für Finanzen & Vermögen</p>
