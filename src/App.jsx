@@ -166,7 +166,7 @@ function AppInner() {
         {/* Top-Bar mit Logout */}
         <div className="hidden md:flex items-center justify-end px-8 py-3 border-b" style={{ borderColor: '#e8dece', background: '#faf8f4' }}>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-navy-400">{user.email}</span>
+            <span className="text-xs text-navy-400">{user.user_metadata?.full_name || user.email}</span>
             <button
               onClick={abmelden}
               className="flex items-center gap-1.5 text-xs text-navy-500 hover:text-red-500 transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100"
