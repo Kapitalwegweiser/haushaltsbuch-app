@@ -1,17 +1,19 @@
 import { useState, useRef } from 'react'
-import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText, ChevronDown, ChevronUp, Trash2, Upload, ExternalLink } from 'lucide-react'
+import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText,
+         ChevronDown, ChevronUp, Trash2, Upload, ExternalLink,
+         AlertTriangle, CheckCircle, Info } from 'lucide-react'
 
 const KATEGORIEN = [
-  { id: 'kranken',     label: 'Krankenversicherung',    gruppe: 'Personenversicherungen', icon: Heart,     farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'bu',          label: 'Berufsunfähigkeit',       gruppe: 'Personenversicherungen', icon: Shield,    farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'leben',       label: 'Lebensversicherung',      gruppe: 'Personenversicherungen', icon: Heart,     farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'unfall',      label: 'Unfallversicherung',      gruppe: 'Personenversicherungen', icon: Shield,    farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'haftpflicht', label: 'Haftpflichtversicherung', gruppe: 'Sachversicherungen',     icon: Umbrella,  farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'hausrat',     label: 'Hausratversicherung',     gruppe: 'Sachversicherungen',     icon: Home,      farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'kfz',         label: 'Kfz-Versicherung',        gruppe: 'Sachversicherungen',     icon: Car,       farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'gebaude',     label: 'Gebäudeversicherung',     gruppe: 'Sachversicherungen',     icon: Home,      farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'rechtsschutz',label: 'Rechtsschutzversicherung',gruppe: 'Sachversicherungen',     icon: FileText,  farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'sonstiges',   label: 'Sonstiges',               gruppe: 'Sonstige',              icon: Shield,    farbe: '#888',    bg: '#f0ece6' },
+  { id: 'kranken',      label: 'Krankenversicherung',    gruppe: 'Personenversicherungen', icon: Heart,    farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'bu',           label: 'Berufsunfähigkeit',       gruppe: 'Personenversicherungen', icon: Shield,   farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'leben',        label: 'Lebensversicherung',      gruppe: 'Personenversicherungen', icon: Heart,    farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'unfall',       label: 'Unfallversicherung',      gruppe: 'Personenversicherungen', icon: Shield,   farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'haftpflicht',  label: 'Haftpflichtversicherung', gruppe: 'Sachversicherungen',     icon: Umbrella, farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'hausrat',      label: 'Hausratversicherung',     gruppe: 'Sachversicherungen',     icon: Home,     farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'kfz',          label: 'Kfz-Versicherung',        gruppe: 'Sachversicherungen',     icon: Car,      farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'gebaude',      label: 'Gebäudeversicherung',     gruppe: 'Sachversicherungen',     icon: Home,     farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'rechtsschutz', label: 'Rechtsschutzversicherung',gruppe: 'Sachversicherungen',     icon: FileText, farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'sonstiges',    label: 'Sonstiges',               gruppe: 'Sonstige',              icon: Shield,   farbe: '#888',    bg: '#f0ece6' },
 ]
 
 const GRUPPEN = ['Personenversicherungen', 'Sachversicherungen', 'Sonstige']
@@ -28,9 +30,7 @@ function jahresbeitrag(v) {
   return b
 }
 
-function monatsbeitrag(v) {
-  return jahresbeitrag(v) / 12
-}
+function monatsbeitrag(v) { return jahresbeitrag(v) / 12 }
 
 function kuendigungsStatus(datum) {
   if (!datum) return null
@@ -41,34 +41,181 @@ function kuendigungsStatus(datum) {
   return null
 }
 
-const LEER = { name: '', anbieter: '', kategorie: 'haftpflicht', beitrag: '', intervall: 'jaehrlich', kuendigungsdatum: '', notizen: '', police: null }
+// ── Optimierungshinweise ──────────────────────────────────────────────────────
+const KFZ_LIMITS = { haftpflicht: 400, teilkasko: 600, vollkasko: 1200 }
+const KRANKEN_LIMITS = { gkv: 900, pkv: 6000 }
+const HAUSRAT_LIMIT = 250
+const HAFTPFLICHT_LIMIT = 150
 
-export default function VersicherungenSeite({ versicherungen, setVersicherungen }) {
-  const [formOffen, setFormOffen] = useState(false)
-  const [editId, setEditId]       = useState(null)
-  const [form, setForm]           = useState(LEER)
+function ermittleHinweise(versicherungen, monatlichesEinkommen) {
+  const hinweise = []
+  const gesamtMonat = versicherungen.reduce((s, v) => s + monatsbeitrag(v), 0)
+  const kategorien  = versicherungen.map(v => v.kategorie)
+
+  // 1. Fehlende Haftpflicht
+  if (!kategorien.includes('haftpflicht')) {
+    hinweise.push({
+      typ: 'rot',
+      titel: 'Privathaftpflicht fehlt',
+      text: 'Die Privathaftpflicht ist eine der wichtigsten Versicherungen — sie schützt dich vor existenzbedrohenden Schadensforderungen und kostet oft unter 60 € / Jahr.',
+    })
+  }
+
+  // 2. Fehlende BU
+  if (!kategorien.includes('bu')) {
+    hinweise.push({
+      typ: 'gelb',
+      titel: 'Keine Berufsunfähigkeitsversicherung',
+      text: 'Die BU gilt als wichtigste Absicherung für Berufstätige. Ohne sie droht im Ernstfall der finanzielle Absturz — prüfe ob du abgesichert bist.',
+    })
+  }
+
+  // 3. Gesamtbelastung vs. Einkommen
+  if (monatlichesEinkommen > 0) {
+    const anteil = gesamtMonat / monatlichesEinkommen
+    if (anteil > 0.15) {
+      hinweise.push({
+        typ: 'rot',
+        titel: 'Versicherungskosten sehr hoch',
+        text: `Deine Versicherungen kosten ${(anteil * 100).toFixed(0)} % deines monatlichen Einkommens. Empfohlen sind max. 10–12 %. Prüfe ob alle Policen wirklich notwendig sind.`,
+      })
+    } else if (anteil > 0.10) {
+      hinweise.push({
+        typ: 'gelb',
+        titel: 'Versicherungskosten leicht erhöht',
+        text: `Deine Versicherungen kosten ${(anteil * 100).toFixed(0)} % deines Einkommens. Der empfohlene Richtwert liegt bei max. 10–12 %.`,
+      })
+    }
+  }
+
+  // 4. Kfz zu teuer (nach Deckungsart)
+  versicherungen.filter(v => v.kategorie === 'kfz').forEach(v => {
+    const limit = KFZ_LIMITS[v.deckungsart] || KFZ_LIMITS.vollkasko
+    const deckLabel = v.deckungsart === 'haftpflicht' ? 'Haftpflicht'
+      : v.deckungsart === 'teilkasko' ? 'Teilkasko' : 'Vollkasko'
+    if (jahresbeitrag(v) > limit) {
+      hinweise.push({
+        typ: 'gelb',
+        titel: `Kfz (${deckLabel}) möglicherweise zu teuer`,
+        text: `Dein Kfz-Beitrag liegt über dem Richtwert von ${limit.toLocaleString('de-DE')} € / Jahr für ${deckLabel}. Ein Vergleich könnte sich lohnen — Wechsler sparen oft 200–400 € im Jahr.`,
+      })
+    }
+  })
+
+  // 5. Krankenversicherung zu teuer
+  versicherungen.filter(v => v.kategorie === 'kranken').forEach(v => {
+    const limit = KRANKEN_LIMITS[v.krankenArt] || KRANKEN_LIMITS.pkv
+    const artLabel = v.krankenArt === 'gkv' ? 'GKV' : 'PKV'
+    if (jahresbeitrag(v) > limit) {
+      hinweise.push({
+        typ: 'gelb',
+        titel: `Krankenversicherung (${artLabel}) überdurchschnittlich`,
+        text: `Dein KV-Beitrag liegt über dem Richtwert von ${limit.toLocaleString('de-DE')} € / Jahr für ${artLabel}. Bei der PKV lohnt sich ein Tarifwechsel innerhalb des Anbieters zu prüfen.`,
+      })
+    }
+  })
+
+  // 6. Hausrat zu teuer
+  versicherungen.filter(v => v.kategorie === 'hausrat').forEach(v => {
+    if (jahresbeitrag(v) > HAUSRAT_LIMIT) {
+      hinweise.push({
+        typ: 'gelb',
+        titel: 'Hausratversicherung möglicherweise zu teuer',
+        text: `Dein Hausrat-Beitrag liegt über ${HAUSRAT_LIMIT} € / Jahr. Viele Anbieter bieten gleichwertige Leistungen günstiger an — ein Vergleich lohnt sich.`,
+      })
+    }
+  })
+
+  // 7. Haftpflicht zu teuer
+  versicherungen.filter(v => v.kategorie === 'haftpflicht').forEach(v => {
+    if (jahresbeitrag(v) > HAFTPFLICHT_LIMIT) {
+      hinweise.push({
+        typ: 'gelb',
+        titel: 'Haftpflichtversicherung möglicherweise zu teuer',
+        text: `Dein Haftpflicht-Beitrag liegt über ${HAFTPFLICHT_LIMIT} € / Jahr. Gute Tarife sind oft für unter 80 € / Jahr erhältlich.`,
+      })
+    }
+  })
+
+  // 8. Doppelte Kategorien
+  const gezaehlt = {}
+  kategorien.forEach(k => { gezaehlt[k] = (gezaehlt[k] || 0) + 1 })
+  Object.entries(gezaehlt).forEach(([k, n]) => {
+    if (n > 1) {
+      const name = kategorieInfo(k).label
+      hinweise.push({
+        typ: 'gelb',
+        titel: `Doppelte ${name}`,
+        text: `Du hast ${n} Einträge unter "${name}". Prüfe ob beide wirklich notwendig sind oder ob eine davon gekündigt werden kann.`,
+      })
+    }
+  })
+
+  // 9. Abgelaufene Kündigungsfrist
+  versicherungen.forEach(v => {
+    if (v.kuendigungsdatum) {
+      const tage = Math.ceil((new Date(v.kuendigungsdatum) - new Date()) / (1000 * 60 * 60 * 24))
+      if (tage < 0) {
+        hinweise.push({
+          typ: 'rot',
+          titel: `Kündigungsfrist abgelaufen — ${v.name}`,
+          text: 'Die Frist ist abgelaufen, viele Anbieter verlängern automatisch um 1 Jahr. Ruf direkt an — oft ist eine außerordentliche Kündigung noch möglich.',
+        })
+      }
+    }
+  })
+
+  // 10. Fehlende Police
+  const ohneDokument = versicherungen.filter(v => !v.police).length
+  if (ohneDokument > 0 && versicherungen.length > 0) {
+    hinweise.push({
+      typ: 'info',
+      titel: `${ohneDokument} Versicherung${ohneDokument > 1 ? 'en' : ''} ohne Police`,
+      text: 'Lade deine Policen hoch, damit du sie im Schadensfall sofort zur Hand hast.',
+    })
+  }
+
+  return hinweise
+}
+
+const HINWEIS_STYLE = {
+  rot:  { bg: '#fdecea', border: '#f5b8b8', icon: AlertTriangle, farbe: '#7a1e1e', label: 'Handeln' },
+  gelb: { bg: '#fff8e6', border: '#f5dfa0', icon: AlertTriangle, farbe: '#7a5000', label: 'Prüfen'  },
+  info: { bg: '#edf7f2', border: '#c5e0d4', icon: Info,          farbe: '#2e6b52', label: 'Hinweis' },
+}
+
+const LEER = {
+  name: '', anbieter: '', kategorie: 'haftpflicht', beitrag: '', intervall: 'jaehrlich',
+  kuendigungsdatum: '', notizen: '', police: null, deckungsart: 'vollkasko', krankenArt: 'pkv',
+}
+
+export default function VersicherungenSeite({ versicherungen, setVersicherungen, einnahmen = [] }) {
+  const [formOffen, setFormOffen]     = useState(false)
+  const [editId, setEditId]           = useState(null)
+  const [form, setForm]               = useState(LEER)
   const [aufgeklappt, setAufgeklappt] = useState(null)
-  const [dragOver, setDragOver]   = useState(false)
+  const [dragOver, setDragOver]       = useState(false)
   const fileRef = useRef()
 
-  const gesamtJahr    = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
-  const gesamtMonat   = gesamtJahr / 12
+  const gesamtJahr  = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
+  const gesamtMonat = gesamtJahr / 12
+
+  const monatlichesEinkommen = einnahmen.reduce((s, e) => {
+    const b = parseFloat(e.betrag) || 0
+    if (e.intervall === 'jaehrlich') return s + b / 12
+    if (e.intervall === 'einmalig')  return s
+    return s + b
+  }, 0)
 
   const naechsteKuendigung = versicherungen
     .filter(v => v.kuendigungsdatum && new Date(v.kuendigungsdatum) >= new Date())
     .sort((a, b) => new Date(a.kuendigungsdatum) - new Date(b.kuendigungsdatum))[0]
 
-  function oeffneNeu() {
-    setForm(LEER)
-    setEditId(null)
-    setFormOffen(true)
-  }
+  const hinweise = ermittleHinweise(versicherungen, monatlichesEinkommen)
+  const [hinweiseOffen, setHinweiseOffen] = useState(true)
 
-  function oeffneEdit(v) {
-    setForm({ ...v, police: v.police || null })
-    setEditId(v.id)
-    setFormOffen(true)
-  }
+  function oeffneNeu() { setForm(LEER); setEditId(null); setFormOffen(true) }
+  function oeffneEdit(v) { setForm({ ...LEER, ...v }); setEditId(v.id); setFormOffen(true) }
 
   function handleDatei(file) {
     if (!file) return
@@ -87,16 +234,11 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
     setFormOffen(false)
   }
 
-  function loeschen(id) {
-    setVersicherungen(vs => vs.filter(v => v.id !== id))
-    setAufgeklappt(null)
-  }
+  function loeschen(id) { setVersicherungen(vs => vs.filter(v => v.id !== id)); setAufgeklappt(null) }
 
   function oeffnePolice(police) {
     const a = document.createElement('a')
-    a.href = police.data
-    a.download = police.name
-    a.click()
+    a.href = police.data; a.download = police.name; a.click()
   }
 
   return (
@@ -119,11 +261,11 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
         </div>
         <div className="card" style={{ background: '#edf7f2', borderLeft: '4px solid #2e6b52', borderRadius: '12px' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Monatlich</p>
-          <p className="text-2xl font-semibold text-navy-800">{gesamtMonat.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €</p>
+          <p className="text-2xl font-semibold text-navy-800">{gesamtMonat.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €</p>
         </div>
         <div className="card" style={{ background: '#f7f3ed' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Jährlich</p>
-          <p className="text-2xl font-semibold text-navy-800">{gesamtJahr.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €</p>
+          <p className="text-2xl font-semibold text-navy-800">{gesamtJahr.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €</p>
         </div>
         <div className="card" style={{ background: '#f7f3ed' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Nächste Kündigung</p>
@@ -134,6 +276,51 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
           </p>
         </div>
       </div>
+
+      {/* Optimierungshinweise */}
+      {hinweise.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <button
+            className="w-full flex items-center justify-between px-5 py-4"
+            onClick={() => setHinweiseOffen(o => !o)}
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} style={{ color: '#c9a227' }} />
+              <span className="font-semibold text-navy-700 text-sm">
+                Optimierungshinweise
+              </span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#fff8e6', color: '#7a5000' }}>
+                {hinweise.length}
+              </span>
+            </div>
+            {hinweiseOffen ? <ChevronUp size={15} className="text-navy-400" /> : <ChevronDown size={15} className="text-navy-400" />}
+          </button>
+
+          {hinweiseOffen && (
+            <div className="border-t divide-y" style={{ borderColor: '#e8dece' }}>
+              {hinweise.map((h, i) => {
+                const s = HINWEIS_STYLE[h.typ]
+                const HIcon = s.icon
+                return (
+                  <div key={i} className="px-5 py-3.5 flex gap-3" style={{ background: s.bg }}>
+                    <HIcon size={16} style={{ color: s.farbe, marginTop: 2, flexShrink: 0 }} />
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-semibold" style={{ color: s.farbe }}>{h.titel}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ background: 'rgba(255,255,255,0.6)', color: s.farbe }}>
+                          {s.label}
+                        </span>
+                      </div>
+                      <p className="text-xs leading-relaxed" style={{ color: s.farbe, opacity: 0.85 }}>{h.text}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Liste gruppiert */}
       {versicherungen.length === 0 ? (
@@ -166,7 +353,11 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-navy-800 truncate">{v.name}</p>
-                            <p className="text-xs text-navy-400 truncate">{v.anbieter || kat.label}</p>
+                            <p className="text-xs text-navy-400 truncate">
+                              {v.anbieter || kat.label}
+                              {v.kategorie === 'kfz' && v.deckungsart && ` · ${v.deckungsart === 'haftpflicht' ? 'Haftpflicht' : v.deckungsart === 'teilkasko' ? 'Teilkasko' : 'Vollkasko'}`}
+                              {v.kategorie === 'kranken' && v.krankenArt && ` · ${v.krankenArt === 'gkv' ? 'GKV' : 'PKV'}`}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
@@ -176,8 +367,8 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                             </span>
                           )}
                           <div className="text-right">
-                            <p className="text-sm font-semibold text-navy-800">{monatB.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € <span className="text-xs font-normal text-navy-400">/ Mon.</span></p>
-                            <p className="text-xs text-navy-400">{jahrB.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € / Jahr</p>
+                            <p className="text-sm font-semibold text-navy-800">{monatB.toLocaleString('de-DE', { maximumFractionDigits: 0 })} € <span className="text-xs font-normal text-navy-400">/ Mon.</span></p>
+                            <p className="text-xs text-navy-400">{jahrB.toLocaleString('de-DE', { maximumFractionDigits: 0 })} € / Jahr</p>
                           </div>
                           {offen ? <ChevronUp size={15} className="text-navy-400" /> : <ChevronDown size={15} className="text-navy-400" />}
                         </div>
@@ -194,9 +385,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                           <div>
                             <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Kündigungsdatum</p>
                             <p className="text-navy-700 font-medium">
-                              {v.kuendigungsdatum
-                                ? new Date(v.kuendigungsdatum).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
-                                : '—'}
+                              {v.kuendigungsdatum ? new Date(v.kuendigungsdatum).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
                             </p>
                           </div>
                         </div>
@@ -213,9 +402,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                                 <ExternalLink size={12} /> Öffnen
                               </button>
                               <button onClick={() => setVersicherungen(vs => vs.map(x => x.id === v.id ? { ...x, police: null } : x))}
-                                className="text-navy-400 hover:text-red-500 ml-1">
-                                <X size={14} />
-                              </button>
+                                className="text-navy-400 hover:text-red-500 ml-1"><X size={14} /></button>
                             </div>
                           ) : (
                             <p className="text-sm text-navy-400 italic">Kein Dokument hinterlegt</p>
@@ -278,6 +465,62 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                   {KATEGORIEN.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
                 </select>
               </div>
+
+              {/* Kfz: Deckungsart */}
+              {form.kategorie === 'kfz' && (
+                <div>
+                  <label className="label">Deckungsart</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'haftpflicht', label: 'Haftpflicht' },
+                      { id: 'teilkasko',   label: 'Teilkasko'   },
+                      { id: 'vollkasko',   label: 'Vollkasko'   },
+                    ].map(d => (
+                      <button key={d.id} type="button"
+                        onClick={() => setForm(f => ({ ...f, deckungsart: d.id }))}
+                        className="py-2 rounded-xl text-sm font-medium transition-all border"
+                        style={{
+                          background: form.deckungsart === d.id ? '#2e6b52' : '#fff',
+                          color: form.deckungsart === d.id ? '#fff' : '#5a4a3a',
+                          borderColor: form.deckungsart === d.id ? '#2e6b52' : '#d8ccb8',
+                        }}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-navy-400 mt-1">
+                    Richtwert: Haftpflicht &lt; 400 € · Teilkasko &lt; 600 € · Vollkasko &lt; 1.200 € / Jahr
+                  </p>
+                </div>
+              )}
+
+              {/* Kranken: GKV / PKV */}
+              {form.kategorie === 'kranken' && (
+                <div>
+                  <label className="label">Art der Krankenversicherung</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'gkv', label: 'Gesetzlich (GKV)' },
+                      { id: 'pkv', label: 'Privat (PKV)'     },
+                    ].map(d => (
+                      <button key={d.id} type="button"
+                        onClick={() => setForm(f => ({ ...f, krankenArt: d.id }))}
+                        className="py-2 rounded-xl text-sm font-medium transition-all border"
+                        style={{
+                          background: form.krankenArt === d.id ? '#2e6b52' : '#fff',
+                          color: form.krankenArt === d.id ? '#fff' : '#5a4a3a',
+                          borderColor: form.krankenArt === d.id ? '#2e6b52' : '#d8ccb8',
+                        }}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-navy-400 mt-1">
+                    Richtwert: GKV &lt; 900 € · PKV &lt; 6.000 € / Jahr
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="label">Anbieter</label>
                 <input className="input" placeholder="z. B. Allianz, AOK, HUK…"
@@ -331,10 +574,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                 ) : (
                   <div
                     className="rounded-xl flex flex-col items-center justify-center gap-2 py-6 cursor-pointer transition-colors"
-                    style={{
-                      border: `2px dashed ${dragOver ? '#2e6b52' : '#d8ccb8'}`,
-                      background: dragOver ? '#edf7f2' : '#faf8f4',
-                    }}
+                    style={{ border: `2px dashed ${dragOver ? '#2e6b52' : '#d8ccb8'}`, background: dragOver ? '#edf7f2' : '#faf8f4' }}
                     onClick={() => fileRef.current.click()}
                     onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                     onDragLeave={() => setDragOver(false)}

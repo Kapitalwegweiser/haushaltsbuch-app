@@ -171,7 +171,7 @@ function AppInner() {
         // 'liste' oder jeder andere Wert → Immobilienliste/Detail
         return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} />
       case 'versicherungen':
-        return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} />
+        return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} einnahmen={einnahmen} />
       case 'profil':
         return <ProfilSeite user={user} abmelden={abmelden} />
       default:
