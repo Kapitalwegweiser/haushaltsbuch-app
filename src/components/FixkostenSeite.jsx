@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Edit2, Check, X, Calendar, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, Calendar, RefreshCw, Home, Car, Shield, PiggyBank, Tv, Heart, CreditCard, Baby, MoreHorizontal } from 'lucide-react'
 import { FIXKOSTEN_KATEGORIEN, INTERVALL_OPTIONEN, MONATE, monatlicherBetrag } from '../data/kategorien'
 import KategorieSelect from './KategorieSelect'
 
@@ -7,6 +7,25 @@ const LEER = { name: '', kategorie: '', betrag: '', intervall: 'monatlich', abbu
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+}
+
+const GRUPPE_META = {
+  'Wohnen':                { icon: Home,          farbe: '#2e6b52', bg: '#edf7f2' },
+  'Mobilität':             { icon: Car,           farbe: '#6b5c4d', bg: '#ede6d8' },
+  'Versicherungen':        { icon: Shield,        farbe: '#321f13', bg: '#f0ece6' },
+  'Vorsorge & Sparen':     { icon: PiggyBank,     farbe: '#c9a227', bg: '#fdf8ed' },
+  'Abonnements & Medien':  { icon: Tv,            farbe: '#5b4fa8', bg: '#f0eeff' },
+  'Gesundheit & Fitness':  { icon: Heart,         farbe: '#c0394b', bg: '#fdeef0' },
+  'Kredite & Schulden':    { icon: CreditCard,    farbe: '#b84c00', bg: '#fff3eb' },
+  'Kinder & Familie':      { icon: Baby,          farbe: '#1a7ea8', bg: '#e8f5fc' },
+  'Sonstiges':             { icon: MoreHorizontal,farbe: '#888',    bg: '#f5f5f5' },
+}
+
+function gruppeVonKategorie(kategorieName) {
+  for (const g of FIXKOSTEN_KATEGORIEN) {
+    if (g.eintraege.includes(kategorieName)) return g.gruppe
+  }
+  return 'Sonstiges'
 }
 
 function IntervallBadge({ intervall, abbuchungsmonat }) {
@@ -18,9 +37,9 @@ function IntervallBadge({ intervall, abbuchungsmonat }) {
 }
 
 export default function FixkostenSeite({ fixkosten, setFixkosten }) {
-  const [formular, setFormular] = useState(LEER)
+  const [formular, setFormular]       = useState(LEER)
   const [bearbeitungId, setBearbeitungId] = useState(null)
-  const [fehler, setFehler] = useState({})
+  const [fehler, setFehler]           = useState({})
   const [formularOffen, setFormularOffen] = useState(false)
 
   function validiere() {
@@ -45,53 +64,86 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
     } else {
       setFixkosten([...fixkosten, eintrag])
     }
-    setFormular(LEER)
-    setBearbeitungId(null)
-    setFehler({})
-    setFormularOffen(false)
+    setFormular(LEER); setBearbeitungId(null); setFehler({}); setFormularOffen(false)
   }
 
   function loeschen(id) { setFixkosten(fixkosten.filter(x => x.id !== id)) }
 
   function bearbeiten(eintrag) {
     setFormular({ ...eintrag, betrag: eintrag.betrag.toString(), abbuchungsmonat: eintrag.abbuchungsmonat ?? new Date().getMonth() + 1 })
-    setBearbeitungId(eintrag.id)
-    setFehler({})
-    setFormularOffen(true)
+    setBearbeitungId(eintrag.id); setFehler({}); setFormularOffen(true)
   }
 
   function abbrechen() {
-    setFormular(LEER)
-    setBearbeitungId(null)
-    setFehler({})
-    setFormularOffen(false)
+    setFormular(LEER); setBearbeitungId(null); setFehler({}); setFormularOffen(false)
+  }
+
+  const gesamtMonatlich = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+
+  // Gruppenreihenfolge aus FIXKOSTEN_KATEGORIEN
+  const gruppenReihenfolge = FIXKOSTEN_KATEGORIEN.map(g => g.gruppe)
+
+  function gruppiereNach(liste) {
+    const map = {}
+    for (const f of liste) {
+      const g = gruppeVonKategorie(f.kategorie)
+      if (!map[g]) map[g] = []
+      map[g].push(f)
+    }
+    return gruppenReihenfolge
+      .filter(g => map[g])
+      .map(g => ({ gruppe: g, eintraege: map[g] }))
   }
 
   const monatlich = fixkosten.filter(f => f.intervall !== 'jaehrlich')
-  const jaehrlich = fixkosten.filter(f => f.intervall === 'jaehrlich').sort((a, b) => (a.abbuchungsmonat ?? 1) - (b.abbuchungsmonat ?? 1))
-
-  const gesamtMonatlich = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const jaehrlich = fixkosten.filter(f => f.intervall === 'jaehrlich')
+    .sort((a, b) => (a.abbuchungsmonat ?? 1) - (b.abbuchungsmonat ?? 1))
   const gesamtJaehrlich = jaehrlich.reduce((s, f) => s + f.betrag, 0)
 
-  function Zeile({ f }) {
+  const monatlichGruppiert = gruppiereNach(monatlich)
+  const jaehrlichGruppiert = gruppiereNach(jaehrlich)
+
+  function GruppenBlock({ gruppe, eintraege, istJaehrlich }) {
+    const meta = GRUPPE_META[gruppe] || GRUPPE_META['Sonstiges']
+    const Icon = meta.icon
+    const summe = eintraege.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
     return (
-      <tr className="border-b hover:bg-navy-50/40 transition-colors" style={{ borderColor: '#f0e8dc' }}>
-        <td className="px-4 py-3">
-          <p className="font-medium text-navy-700 text-sm">{f.name}</p>
-          <p className="text-xs text-navy-400">{f.kategorie}</p>
-        </td>
-        <td className="px-4 py-3 text-right text-navy-700 text-sm font-semibold">{euro(f.betrag)}</td>
-        <td className="px-4 py-3 hidden sm:table-cell">
-          <IntervallBadge intervall={f.intervall} abbuchungsmonat={f.abbuchungsmonat} />
-        </td>
-        <td className="px-4 py-3 text-right text-xs text-navy-500">{euro(monatlicherBetrag(f.betrag, f.intervall))}/Mo.</td>
-        <td className="px-4 py-3">
-          <div className="flex gap-1 justify-end">
-            <button onClick={() => bearbeiten(f)} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={14} /></button>
-            <button onClick={() => loeschen(f.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded"><Trash2 size={14} /></button>
+      <div className="card p-0 overflow-hidden">
+        <div className="px-4 py-2.5 flex items-center gap-2.5 border-b" style={{ background: meta.bg, borderColor: '#e8dece' }}>
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: meta.bg }}>
+            <Icon size={14} style={{ color: meta.farbe }} />
           </div>
-        </td>
-      </tr>
+          <span className="text-sm font-semibold" style={{ color: meta.farbe }}>{gruppe}</span>
+          <span className="ml-auto text-xs font-semibold" style={{ color: meta.farbe }}>
+            {istJaehrlich
+              ? `${euro(eintraege.reduce((s, f) => s + f.betrag, 0))} / Jahr`
+              : `${euro(summe)} / Mo.`}
+          </span>
+        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            {eintraege.map(f => (
+              <tr key={f.id} className="border-b hover:bg-navy-50/40 transition-colors" style={{ borderColor: '#f0e8dc' }}>
+                <td className="px-4 py-3">
+                  <p className="font-medium text-navy-700 text-sm">{f.name}</p>
+                  <p className="text-xs text-navy-400">{f.kategorie}</p>
+                </td>
+                <td className="px-4 py-3 text-right text-navy-700 text-sm font-semibold">{euro(f.betrag)}</td>
+                <td className="px-4 py-3 hidden sm:table-cell">
+                  <IntervallBadge intervall={f.intervall} abbuchungsmonat={f.abbuchungsmonat} />
+                </td>
+                <td className="px-4 py-3 text-right text-xs text-navy-500">{euro(monatlicherBetrag(f.betrag, f.intervall))}/Mo.</td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1 justify-end">
+                    <button onClick={() => bearbeiten(f)} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={14} /></button>
+                    <button onClick={() => loeschen(f.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded"><Trash2 size={14} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )
   }
 
@@ -101,7 +153,7 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="section-title mb-0">Monatliche Ausgaben</h2>
+          <h2 className="section-title mb-0">Ausgaben</h2>
           <p className="text-sm text-navy-400 mt-1">Fixkosten + geschätzte monatliche Ausgaben</p>
         </div>
         <div className="text-right shrink-0 ml-4">
@@ -123,33 +175,22 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Bezeichnung</label>
-              <input
-                className={`input ${fehler.name ? 'border-red-400' : ''}`}
+              <input className={`input ${fehler.name ? 'border-red-400' : ''}`}
                 placeholder="z.B. Miete, Lebensmittel, Netflix"
-                value={formular.name}
-                onChange={e => setFormular({ ...formular, name: e.target.value })}
-                autoFocus
-              />
+                value={formular.name} onChange={e => setFormular({ ...formular, name: e.target.value })} autoFocus />
               {fehler.name && <p className="text-red-500 text-xs mt-1">{fehler.name}</p>}
             </div>
             <div>
               <label className="label">Kategorie</label>
-              <KategorieSelect
-                kategorien={FIXKOSTEN_KATEGORIEN}
-                value={formular.kategorie}
-                onChange={v => setFormular({ ...formular, kategorie: v })}
-                placeholder="Kategorie wählen..."
-              />
+              <KategorieSelect kategorien={FIXKOSTEN_KATEGORIEN} value={formular.kategorie}
+                onChange={v => setFormular({ ...formular, kategorie: v })} placeholder="Kategorie wählen..." />
               {fehler.kategorie && <p className="text-red-500 text-xs mt-1">{fehler.kategorie}</p>}
             </div>
             <div>
               <label className="label">Betrag (€)</label>
-              <input
-                className={`input ${fehler.betrag ? 'border-red-400' : ''}`}
+              <input className={`input ${fehler.betrag ? 'border-red-400' : ''}`}
                 type="number" min="0" step="0.01" placeholder="0,00"
-                value={formular.betrag}
-                onChange={e => setFormular({ ...formular, betrag: e.target.value })}
-              />
+                value={formular.betrag} onChange={e => setFormular({ ...formular, betrag: e.target.value })} />
               {fehler.betrag && <p className="text-red-500 text-xs mt-1">{fehler.betrag}</p>}
             </div>
             <div>
@@ -170,20 +211,14 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
               </div>
             )}
           </div>
-
           {formular.betrag && !isNaN(formular.betrag) && +formular.betrag > 0 && (
             <p className="text-xs text-navy-500 mt-3 rounded-lg px-3 py-2 inline-block" style={{ background: '#f7f3ed' }}>
               ≈ {euro(monatlicherBetrag(+formular.betrag, formular.intervall))} / Monat
             </p>
           )}
-
           <div className="flex gap-2 mt-4">
-            <button className="btn-primary" onClick={speichern}>
-              <Check size={15} /> {bearbeitungId ? 'Speichern' : 'Hinzufügen'}
-            </button>
-            <button className="btn-secondary" onClick={abbrechen}>
-              <X size={15} /> Abbrechen
-            </button>
+            <button className="btn-primary" onClick={speichern}><Check size={15} /> {bearbeitungId ? 'Speichern' : 'Hinzufügen'}</button>
+            <button className="btn-secondary" onClick={abbrechen}><X size={15} /> Abbrechen</button>
           </div>
         </div>
       )}
@@ -195,39 +230,35 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
         </div>
       )}
 
-      {/* Monatliche / regelmäßige Kosten */}
-      {monatlich.length > 0 && (
-        <div className="card p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ background: '#f7f3ed', borderColor: '#e8dece' }}>
-            <RefreshCw size={14} className="text-navy-400" />
-            <span className="text-sm font-semibold text-navy-700">Monatlich & regelmäßig</span>
-            <span className="ml-auto text-sm font-bold text-navy-700">
-              {euro(monatlich.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0))}/Mo.
+      {/* Monatlich & regelmäßig — nach Kategorien gruppiert */}
+      {monatlichGruppiert.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={13} className="text-navy-400" />
+            <p className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Monatlich & regelmäßig</p>
+            <span className="ml-auto text-xs font-semibold text-navy-600">
+              {euro(monatlich.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0))} / Mo.
             </span>
           </div>
-          <table className="w-full text-sm">
-            <tbody>
-              {monatlich.map(f => <Zeile key={f.id} f={f} />)}
-            </tbody>
-          </table>
+          {monatlichGruppiert.map(({ gruppe, eintraege }) => (
+            <GruppenBlock key={gruppe} gruppe={gruppe} eintraege={eintraege} istJaehrlich={false} />
+          ))}
         </div>
       )}
 
-      {/* Jährliche Kosten */}
-      {jaehrlich.length > 0 && (
-        <div className="card p-0 overflow-hidden">
-          <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-            <Calendar size={14} className="text-amber-600" />
-            <span className="text-sm font-semibold text-amber-800">Jährliche Kosten</span>
-            <span className="ml-auto text-sm font-bold text-amber-800">
-              {euro(gesamtJaehrlich)}/Jahr · {euro(gesamtJaehrlich / 12)}/Mo.
+      {/* Jährlich — nach Kategorien gruppiert */}
+      {jaehrlichGruppiert.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar size={13} className="text-navy-400" />
+            <p className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Jährliche Kosten</p>
+            <span className="ml-auto text-xs font-semibold text-navy-600">
+              {euro(gesamtJaehrlich)} / Jahr · {euro(gesamtJaehrlich / 12)} / Mo.
             </span>
           </div>
-          <table className="w-full text-sm">
-            <tbody>
-              {jaehrlich.map(f => <Zeile key={f.id} f={f} />)}
-            </tbody>
-          </table>
+          {jaehrlichGruppiert.map(({ gruppe, eintraege }) => (
+            <GruppenBlock key={gruppe} gruppe={gruppe} eintraege={eintraege} istJaehrlich={true} />
+          ))}
         </div>
       )}
 

@@ -10,7 +10,7 @@ const BUDGET_ITEMS = [
   { id: 'score',      label: 'Finanz-Score',       icon: Award },
   { id: 'wachstum',   label: 'Wachstum',           icon: BarChart2 },
   { id: 'einnahmen',  label: 'Einnahmen',          icon: TrendingUp },
-  { id: 'fixkosten',  label: 'Monatl. Ausgaben',   icon: List },
+  { id: 'fixkosten',  label: 'Ausgaben',            icon: List },
 ]
 
 const IMMOBILIEN_ITEMS = [
