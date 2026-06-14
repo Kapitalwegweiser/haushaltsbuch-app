@@ -66,12 +66,12 @@ export default function Startseite({ user, einnahmen, fixkosten, immobilien = []
       {/* Module */}
       <div>
         <p className="label mb-4">Deine Module</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
 
           {/* Budgetplanung */}
           <button
             onClick={() => navigiere('budget', 'dashboard')}
-            className="card text-left group transition-all duration-200 hover:shadow-md"
+            className="card text-left group transition-all duration-200 hover:shadow-md h-full"
             style={{ borderColor: '#d8ccba' }}
           >
             <div className="flex items-start gap-4">
@@ -98,7 +98,7 @@ export default function Startseite({ user, einnahmen, fixkosten, immobilien = []
           {/* Immobilien */}
           <button
             onClick={() => navigiere('immobilien', 'liste')}
-            className="card text-left group transition-all duration-200 hover:shadow-md"
+            className="card text-left group transition-all duration-200 hover:shadow-md h-full"
             style={{ borderColor: '#d8ccba' }}
           >
             <div className="flex items-start gap-4">
@@ -123,7 +123,7 @@ export default function Startseite({ user, einnahmen, fixkosten, immobilien = []
           {/* Versicherungen */}
           <button
             onClick={() => navigiere('versicherungen')}
-            className="card text-left group transition-all duration-200 hover:shadow-md"
+            className="card text-left group transition-all duration-200 hover:shadow-md h-full"
             style={{ borderColor: '#d8ccba' }}
           >
             <div className="flex items-start gap-4">
