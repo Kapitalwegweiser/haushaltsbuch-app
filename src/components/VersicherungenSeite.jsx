@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText,
          ChevronDown, ChevronUp, Trash2, Upload, ExternalLink,
-         AlertTriangle, CheckCircle, Info } from 'lucide-react'
+         AlertTriangle, Info } from 'lucide-react'
 
 const KATEGORIEN = [
   { id: 'kranken',      label: 'Krankenversicherung',    gruppe: 'Personenversicherungen', icon: Heart,    farbe: '#2e6b52', bg: '#edf7f2' },
@@ -31,15 +31,6 @@ function jahresbeitrag(v) {
 }
 
 function monatsbeitrag(v) { return jahresbeitrag(v) / 12 }
-
-function kuendigungsStatus(datum) {
-  if (!datum) return null
-  const tage = Math.ceil((new Date(datum) - new Date()) / (1000 * 60 * 60 * 24))
-  if (tage < 0)   return { label: 'Frist abgelaufen', farbe: '#7a1e1e', bg: '#fdecea' }
-  if (tage <= 30) return { label: 'Jetzt kündbar',    farbe: '#7a1e1e', bg: '#fdecea' }
-  if (tage <= 90) return { label: 'Bald kündbar',     farbe: '#7a5000', bg: '#fff8e6' }
-  return null
-}
 
 // ── Optimierungshinweise ──────────────────────────────────────────────────────
 const KFZ_LIMITS = { haftpflicht: 400, teilkasko: 600, vollkasko: 1200 }
@@ -151,21 +142,7 @@ function ermittleHinweise(versicherungen, monatlichesEinkommen) {
     }
   })
 
-  // 9. Abgelaufene Kündigungsfrist
-  versicherungen.forEach(v => {
-    if (v.kuendigungsdatum) {
-      const tage = Math.ceil((new Date(v.kuendigungsdatum) - new Date()) / (1000 * 60 * 60 * 24))
-      if (tage < 0) {
-        hinweise.push({
-          typ: 'rot',
-          titel: `Kündigungsfrist abgelaufen — ${v.name}`,
-          text: 'Die Frist ist abgelaufen, viele Anbieter verlängern automatisch um 1 Jahr. Ruf direkt an — oft ist eine außerordentliche Kündigung noch möglich.',
-        })
-      }
-    }
-  })
-
-  // 10. Fehlende Police
+  // 9. Fehlende Police
   const ohneDokument = versicherungen.filter(v => !v.police).length
   if (ohneDokument > 0 && versicherungen.length > 0) {
     hinweise.push({
@@ -186,7 +163,7 @@ const HINWEIS_STYLE = {
 
 const LEER = {
   name: '', anbieter: '', kategorie: 'haftpflicht', beitrag: '', intervall: 'jaehrlich',
-  kuendigungsdatum: '', notizen: '', police: null, deckungsart: 'vollkasko', krankenArt: 'pkv',
+  notizen: '', police: null, deckungsart: 'vollkasko', krankenArt: 'pkv',
 }
 
 export default function VersicherungenSeite({ versicherungen, setVersicherungen, einnahmen = [] }) {
@@ -206,10 +183,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
     if (e.intervall === 'einmalig')  return s
     return s + b
   }, 0)
-
-  const naechsteKuendigung = versicherungen
-    .filter(v => v.kuendigungsdatum && new Date(v.kuendigungsdatum) >= new Date())
-    .sort((a, b) => new Date(a.kuendigungsdatum) - new Date(b.kuendigungsdatum))[0]
 
   const hinweise = ermittleHinweise(versicherungen, monatlichesEinkommen)
   const [hinweiseOffen, setHinweiseOffen] = useState(true)
@@ -266,14 +239,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
         <div className="card" style={{ background: '#f7f3ed' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Jährlich</p>
           <p className="text-2xl font-semibold text-navy-800">{gesamtJahr.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €</p>
-        </div>
-        <div className="card" style={{ background: '#f7f3ed' }}>
-          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Nächste Kündigung</p>
-          <p className="text-sm font-semibold text-navy-800 mt-1">
-            {naechsteKuendigung
-              ? new Date(naechsteKuendigung.kuendigungsdatum).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
-              : '—'}
-          </p>
         </div>
       </div>
 
@@ -339,7 +304,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
               {items.map(v => {
                 const kat    = kategorieInfo(v.kategorie)
                 const Icon   = kat.icon
-                const status = kuendigungsStatus(v.kuendigungsdatum)
                 const offen  = aufgeklappt === v.id
                 const jahrB  = jahresbeitrag(v)
                 const monatB = monatsbeitrag(v)
@@ -361,11 +325,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          {status && (
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: status.bg, color: status.farbe }}>
-                              {status.label}
-                            </span>
-                          )}
                           <div className="text-right">
                             <p className="text-sm font-semibold text-navy-800">{monatB.toLocaleString('de-DE', { maximumFractionDigits: 0 })} € <span className="text-xs font-normal text-navy-400">/ Mon.</span></p>
                             <p className="text-xs text-navy-400">{jahrB.toLocaleString('de-DE', { maximumFractionDigits: 0 })} € / Jahr</p>
@@ -377,17 +336,9 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
 
                     {offen && (
                       <div className="border-t px-5 py-4 space-y-3" style={{ borderColor: '#e8dece', background: '#faf8f4' }}>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Beitrag</p>
-                            <p className="text-navy-700 font-medium">{parseFloat(v.beitrag || 0).toLocaleString('de-DE')} € / {v.intervall}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Kündigungsdatum</p>
-                            <p className="text-navy-700 font-medium">
-                              {v.kuendigungsdatum ? new Date(v.kuendigungsdatum).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
-                            </p>
-                          </div>
+                        <div className="text-sm">
+                          <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Beitrag</p>
+                          <p className="text-navy-700 font-medium">{parseFloat(v.beitrag || 0).toLocaleString('de-DE')} € / {v.intervall}</p>
                         </div>
 
                         {/* Police */}
@@ -552,13 +503,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                   </span>
                 </div>
               )}
-
-              <div>
-                <label className="label">Kündigungsdatum</label>
-                <input className="input" type="date"
-                  value={form.kuendigungsdatum} onChange={e => setForm(f => ({ ...f, kuendigungsdatum: e.target.value }))} />
-                <p className="text-xs text-navy-400 mt-1">Du siehst einen Hinweis wenn das Datum naht.</p>
-              </div>
 
               {/* Police Upload */}
               <div>
