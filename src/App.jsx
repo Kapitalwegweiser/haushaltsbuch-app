@@ -11,6 +11,7 @@ import EinnahmenSeite from './components/EinnahmenSeite'
 import FixkostenSeite from './components/FixkostenSeite'
 import FinanzScore from './components/FinanzScore'
 import Wachstumsprognose from './components/Wachstumsprognose'
+import VersicherungenSeite from './components/VersicherungenSeite'
 import Onboarding from './components/Onboarding'
 import AppTour from './components/AppTour'
 import LoginSeite from './components/LoginSeite'
@@ -116,6 +117,28 @@ function AppInner() {
     }
   }, [user?.id, immobilien])
 
+  // Versicherungen: in localStorage pro User gespeichert
+  const [versicherungen, setVersicherungenState] = useState([])
+  const versicherungenInitialisiert = useRef(false)
+
+  useEffect(() => {
+    if (user?.id && !versicherungenInitialisiert.current) {
+      versicherungenInitialisiert.current = true
+      try {
+        const gespeichert = localStorage.getItem(`kw_versicherungen_${user.id}`)
+        if (gespeichert) setVersicherungenState(JSON.parse(gespeichert))
+      } catch { /* ignore */ }
+    }
+  }, [user?.id])
+
+  const setVersicherungen = useCallback((neu) => {
+    const liste = typeof neu === 'function' ? neu(versicherungen) : neu
+    setVersicherungenState(liste)
+    if (user?.id) {
+      try { localStorage.setItem(`kw_versicherungen_${user.id}`, JSON.stringify(liste)) } catch { /* ignore */ }
+    }
+  }, [user?.id, versicherungen])
+
   const [einnahmen, setEinnahmen, einnahmenLaden] = useCloudCollection('einnahmen', user?.id)
   const [fixkosten, setFixkosten, fixkostenLaden] = useCloudCollection('fixkosten', user?.id)
 
@@ -147,6 +170,8 @@ function AppInner() {
           return <SteuerUebersichtSeite immobilien={immobilien} />
         // 'liste' oder jeder andere Wert → Immobilienliste/Detail
         return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} />
+      case 'versicherungen':
+        return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} />
       case 'profil':
         return <ProfilSeite user={user} abmelden={abmelden} />
       default:
