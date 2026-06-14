@@ -227,17 +227,17 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="card" style={{ background: '#f7f3ed' }}>
-          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Versicherungen</p>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="card text-center" style={{ background: '#f7f3ed' }}>
+          <p className="text-xs text-navy-400 uppercase tracking-widest mb-2">Versicherungen</p>
           <p className="text-2xl font-semibold text-navy-800">{versicherungen.length}</p>
         </div>
-        <div className="card" style={{ background: '#edf7f2', borderLeft: '4px solid #2e6b52', borderRadius: '12px' }}>
-          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Monatlich</p>
+        <div className="card text-center" style={{ background: '#edf7f2', borderLeft: '4px solid #2e6b52', borderRadius: '12px' }}>
+          <p className="text-xs text-navy-400 uppercase tracking-widest mb-2">Monatlich</p>
           <p className="text-2xl font-semibold text-navy-800">{gesamtMonat.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €</p>
         </div>
-        <div className="card" style={{ background: '#f7f3ed' }}>
-          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Jährlich</p>
+        <div className="card text-center" style={{ background: '#f7f3ed' }}>
+          <p className="text-xs text-navy-400 uppercase tracking-widest mb-2">Jährlich</p>
           <p className="text-2xl font-semibold text-navy-800">{gesamtJahr.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €</p>
         </div>
       </div>
