@@ -162,7 +162,7 @@ function AppInner() {
   function renderInhalt() {
     switch (aktivesModul) {
       case 'startseite':
-        return <Startseite user={user} einnahmen={einnahmen} fixkosten={fixkosten} immobilien={immobilien} setAktivesModul={setAktivesModul} setAktiveSeite={setAktiveSeite} />
+        return <Startseite user={user} einnahmen={einnahmen} fixkosten={fixkosten} immobilien={immobilien} versicherungen={versicherungen} setAktivesModul={setAktivesModul} setAktiveSeite={setAktiveSeite} />
       case 'budget':
         return budgetSeiten[aktiveSeite] ?? budgetSeiten.dashboard
       case 'immobilien':
@@ -175,7 +175,7 @@ function AppInner() {
       case 'profil':
         return <ProfilSeite user={user} abmelden={abmelden} />
       default:
-        return <Startseite user={user} einnahmen={einnahmen} fixkosten={fixkosten} immobilien={immobilien} setAktivesModul={setAktivesModul} setAktiveSeite={setAktiveSeite} />
+        return <Startseite user={user} einnahmen={einnahmen} fixkosten={fixkosten} immobilien={immobilien} versicherungen={versicherungen} setAktivesModul={setAktivesModul} setAktiveSeite={setAktiveSeite} />
     }
   }
 
