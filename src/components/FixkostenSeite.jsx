@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Edit2, Check, X, Calendar, RefreshCw, Home, Car, Shield, PiggyBank, Tv, Heart, CreditCard, Baby, MoreHorizontal } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, Home, Car, Shield, PiggyBank, Tv, Heart, CreditCard, Baby, MoreHorizontal } from 'lucide-react'
 import { FIXKOSTEN_KATEGORIEN, INTERVALL_OPTIONEN, MONATE, monatlicherBetrag } from '../data/kategorien'
 import KategorieSelect from './KategorieSelect'
 
@@ -95,13 +95,7 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
       .map(g => ({ gruppe: g, eintraege: map[g] }))
   }
 
-  const monatlich = fixkosten.filter(f => f.intervall !== 'jaehrlich')
-  const jaehrlich = fixkosten.filter(f => f.intervall === 'jaehrlich')
-    .sort((a, b) => (a.abbuchungsmonat ?? 1) - (b.abbuchungsmonat ?? 1))
-  const gesamtJaehrlich = jaehrlich.reduce((s, f) => s + f.betrag, 0)
-
-  const monatlichGruppiert = gruppiereNach(monatlich)
-  const jaehrlichGruppiert = gruppiereNach(jaehrlich)
+  const alleGruppiert = gruppiereNach(fixkosten)
 
   function GruppenBlock({ gruppe, eintraege, istJaehrlich }) {
     const meta = GRUPPE_META[gruppe] || GRUPPE_META['Sonstiges']
@@ -230,34 +224,11 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
         </div>
       )}
 
-      {/* Monatlich & regelmäßig — nach Kategorien gruppiert */}
-      {monatlichGruppiert.length > 0 && (
+      {/* Alle Ausgaben nach Kategorien gruppiert */}
+      {alleGruppiert.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <RefreshCw size={13} className="text-navy-400" />
-            <p className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Monatlich & regelmäßig</p>
-            <span className="ml-auto text-xs font-semibold text-navy-600">
-              {euro(monatlich.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0))} / Mo.
-            </span>
-          </div>
-          {monatlichGruppiert.map(({ gruppe, eintraege }) => (
+          {alleGruppiert.map(({ gruppe, eintraege }) => (
             <GruppenBlock key={gruppe} gruppe={gruppe} eintraege={eintraege} istJaehrlich={false} />
-          ))}
-        </div>
-      )}
-
-      {/* Jährlich — nach Kategorien gruppiert */}
-      {jaehrlichGruppiert.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Calendar size={13} className="text-navy-400" />
-            <p className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Jährliche Kosten</p>
-            <span className="ml-auto text-xs font-semibold text-navy-600">
-              {euro(gesamtJaehrlich)} / Jahr · {euro(gesamtJaehrlich / 12)} / Mo.
-            </span>
-          </div>
-          {jaehrlichGruppiert.map(({ gruppe, eintraege }) => (
-            <GruppenBlock key={gruppe} gruppe={gruppe} eintraege={eintraege} istJaehrlich={true} />
           ))}
         </div>
       )}
