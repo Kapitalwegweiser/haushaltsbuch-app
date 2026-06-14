@@ -114,7 +114,14 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
               : `${euro(summe)} / Mo.`}
           </span>
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '150px' }} className="hidden sm:table-column" />
+            <col style={{ width: '110px' }} />
+            <col style={{ width: '72px' }} />
+          </colgroup>
           <tbody>
             {eintraege.map(f => (
               <tr key={f.id} className="border-b hover:bg-navy-50/40 transition-colors" style={{ borderColor: '#f0e8dc' }}>
