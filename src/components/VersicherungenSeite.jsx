@@ -1,17 +1,17 @@
-import { useState } from 'react'
-import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText, ChevronDown, ChevronUp, Trash2, Upload, ExternalLink } from 'lucide-react'
 
 const KATEGORIEN = [
-  { id: 'kranken',     label: 'Krankenversicherung',    gruppe: 'Personenversicherungen',  icon: Heart,     farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'bu',          label: 'Berufsunfähigkeit',       gruppe: 'Personenversicherungen',  icon: Shield,    farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'leben',       label: 'Lebensversicherung',      gruppe: 'Personenversicherungen',  icon: Heart,     farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'unfall',      label: 'Unfallversicherung',      gruppe: 'Personenversicherungen',  icon: Shield,    farbe: '#2e6b52', bg: '#edf7f2' },
-  { id: 'haftpflicht', label: 'Haftpflichtversicherung', gruppe: 'Sachversicherungen',      icon: Umbrella,  farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'hausrat',     label: 'Hausratversicherung',     gruppe: 'Sachversicherungen',      icon: Home,      farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'kfz',         label: 'Kfz-Versicherung',        gruppe: 'Sachversicherungen',      icon: Car,       farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'gebaude',     label: 'Gebäudeversicherung',     gruppe: 'Sachversicherungen',      icon: Home,      farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'rechtsschutz',label: 'Rechtsschutzversicherung',gruppe: 'Sachversicherungen',      icon: FileText,  farbe: '#6b5c4d', bg: '#ede6d8' },
-  { id: 'sonstiges',   label: 'Sonstiges',               gruppe: 'Sonstige',               icon: Shield,    farbe: '#888', bg: '#f0ece6' },
+  { id: 'kranken',     label: 'Krankenversicherung',    gruppe: 'Personenversicherungen', icon: Heart,     farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'bu',          label: 'Berufsunfähigkeit',       gruppe: 'Personenversicherungen', icon: Shield,    farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'leben',       label: 'Lebensversicherung',      gruppe: 'Personenversicherungen', icon: Heart,     farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'unfall',      label: 'Unfallversicherung',      gruppe: 'Personenversicherungen', icon: Shield,    farbe: '#2e6b52', bg: '#edf7f2' },
+  { id: 'haftpflicht', label: 'Haftpflichtversicherung', gruppe: 'Sachversicherungen',     icon: Umbrella,  farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'hausrat',     label: 'Hausratversicherung',     gruppe: 'Sachversicherungen',     icon: Home,      farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'kfz',         label: 'Kfz-Versicherung',        gruppe: 'Sachversicherungen',     icon: Car,       farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'gebaude',     label: 'Gebäudeversicherung',     gruppe: 'Sachversicherungen',     icon: Home,      farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'rechtsschutz',label: 'Rechtsschutzversicherung',gruppe: 'Sachversicherungen',     icon: FileText,  farbe: '#6b5c4d', bg: '#ede6d8' },
+  { id: 'sonstiges',   label: 'Sonstiges',               gruppe: 'Sonstige',              icon: Shield,    farbe: '#888',    bg: '#f0ece6' },
 ]
 
 const GRUPPEN = ['Personenversicherungen', 'Sachversicherungen', 'Sonstige']
@@ -22,30 +22,37 @@ function kategorieInfo(id) {
 
 function jahresbeitrag(v) {
   const b = parseFloat(v.beitrag) || 0
-  if (v.intervall === 'monatlich') return b * 12
-  if (v.intervall === 'halbjaehrlich') return b * 2
+  if (v.intervall === 'monatlich')        return b * 12
+  if (v.intervall === 'halbjaehrlich')    return b * 2
   if (v.intervall === 'vierteljaehrlich') return b * 4
   return b
+}
+
+function monatsbeitrag(v) {
+  return jahresbeitrag(v) / 12
 }
 
 function kuendigungsStatus(datum) {
   if (!datum) return null
   const tage = Math.ceil((new Date(datum) - new Date()) / (1000 * 60 * 60 * 24))
-  if (tage < 0) return { label: 'Frist abgelaufen', farbe: '#7a1e1e', bg: '#fdecea' }
-  if (tage <= 30) return { label: 'Jetzt kündbar', farbe: '#7a1e1e', bg: '#fdecea' }
-  if (tage <= 90) return { label: 'Bald kündbar', farbe: '#7a5000', bg: '#fff8e6' }
+  if (tage < 0)   return { label: 'Frist abgelaufen', farbe: '#7a1e1e', bg: '#fdecea' }
+  if (tage <= 30) return { label: 'Jetzt kündbar',    farbe: '#7a1e1e', bg: '#fdecea' }
+  if (tage <= 90) return { label: 'Bald kündbar',     farbe: '#7a5000', bg: '#fff8e6' }
   return null
 }
 
-const LEER = { name: '', anbieter: '', kategorie: 'haftpflicht', beitrag: '', intervall: 'jaehrlich', kuendigungsdatum: '', notizen: '' }
+const LEER = { name: '', anbieter: '', kategorie: 'haftpflicht', beitrag: '', intervall: 'jaehrlich', kuendigungsdatum: '', notizen: '', police: null }
 
 export default function VersicherungenSeite({ versicherungen, setVersicherungen }) {
   const [formOffen, setFormOffen] = useState(false)
-  const [editId, setEditId] = useState(null)
-  const [form, setForm] = useState(LEER)
+  const [editId, setEditId]       = useState(null)
+  const [form, setForm]           = useState(LEER)
   const [aufgeklappt, setAufgeklappt] = useState(null)
+  const [dragOver, setDragOver]   = useState(false)
+  const fileRef = useRef()
 
-  const gesamtJahr = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
+  const gesamtJahr    = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
+  const gesamtMonat   = gesamtJahr / 12
 
   const naechsteKuendigung = versicherungen
     .filter(v => v.kuendigungsdatum && new Date(v.kuendigungsdatum) >= new Date())
@@ -58,9 +65,16 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
   }
 
   function oeffneEdit(v) {
-    setForm({ ...v })
+    setForm({ ...v, police: v.police || null })
     setEditId(v.id)
     setFormOffen(true)
+  }
+
+  function handleDatei(file) {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = e => setForm(f => ({ ...f, police: { name: file.name, typ: file.type, data: e.target.result } }))
+    reader.readAsDataURL(file)
   }
 
   function speichern() {
@@ -78,6 +92,13 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
     setAufgeklappt(null)
   }
 
+  function oeffnePolice(police) {
+    const a = document.createElement('a')
+    a.href = police.data
+    a.download = police.name
+    a.click()
+  }
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
@@ -91,18 +112,22 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="card" style={{ background: '#f7f3ed' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Versicherungen</p>
           <p className="text-2xl font-semibold text-navy-800">{versicherungen.length}</p>
         </div>
+        <div className="card" style={{ background: '#edf7f2', borderLeft: '4px solid #2e6b52', borderRadius: '12px' }}>
+          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Monatlich</p>
+          <p className="text-2xl font-semibold text-navy-800">{gesamtMonat.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €</p>
+        </div>
         <div className="card" style={{ background: '#f7f3ed' }}>
-          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Jahresbeitrag</p>
+          <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Jährlich</p>
           <p className="text-2xl font-semibold text-navy-800">{gesamtJahr.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €</p>
         </div>
         <div className="card" style={{ background: '#f7f3ed' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Nächste Kündigung</p>
-          <p className="text-base font-semibold text-navy-800 mt-1">
+          <p className="text-sm font-semibold text-navy-800 mt-1">
             {naechsteKuendigung
               ? new Date(naechsteKuendigung.kuendigungsdatum).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
               : '—'}
@@ -125,17 +150,15 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
             <div key={gruppe} className="space-y-2">
               <p className="text-xs font-semibold text-navy-400 uppercase tracking-widest">{gruppe}</p>
               {items.map(v => {
-                const kat = kategorieInfo(v.kategorie)
-                const Icon = kat.icon
+                const kat    = kategorieInfo(v.kategorie)
+                const Icon   = kat.icon
                 const status = kuendigungsStatus(v.kuendigungsdatum)
-                const offen = aufgeklappt === v.id
-                const jahrBeitrag = jahresbeitrag(v)
+                const offen  = aufgeklappt === v.id
+                const jahrB  = jahresbeitrag(v)
+                const monatB = monatsbeitrag(v)
                 return (
                   <div key={v.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <button
-                      className="w-full text-left px-5 py-4"
-                      onClick={() => setAufgeklappt(offen ? null : v.id)}
-                    >
+                    <button className="w-full text-left px-5 py-4" onClick={() => setAufgeklappt(offen ? null : v.id)}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: kat.bg }}>
@@ -153,8 +176,8 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                             </span>
                           )}
                           <div className="text-right">
-                            <p className="text-sm font-semibold text-navy-800">{jahrBeitrag.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €</p>
-                            <p className="text-xs text-navy-400">/ Jahr</p>
+                            <p className="text-sm font-semibold text-navy-800">{monatB.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € <span className="text-xs font-normal text-navy-400">/ Mon.</span></p>
+                            <p className="text-xs text-navy-400">{jahrB.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € / Jahr</p>
                           </div>
                           {offen ? <ChevronUp size={15} className="text-navy-400" /> : <ChevronDown size={15} className="text-navy-400" />}
                         </div>
@@ -169,7 +192,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                             <p className="text-navy-700 font-medium">{parseFloat(v.beitrag || 0).toLocaleString('de-DE')} € / {v.intervall}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Kündigungsfrist</p>
+                            <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Kündigungsdatum</p>
                             <p className="text-navy-700 font-medium">
                               {v.kuendigungsdatum
                                 ? new Date(v.kuendigungsdatum).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -177,6 +200,28 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                             </p>
                           </div>
                         </div>
+
+                        {/* Police */}
+                        <div>
+                          <p className="text-xs text-navy-400 uppercase tracking-wide mb-1.5">Police / Dokument</p>
+                          {v.police ? (
+                            <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
+                              <FileText size={14} style={{ color: '#2e6b52' }} />
+                              <span className="text-sm text-navy-700 flex-1 truncate">{v.police.name}</span>
+                              <button onClick={() => oeffnePolice(v.police)}
+                                className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: '#2e6b52' }}>
+                                <ExternalLink size={12} /> Öffnen
+                              </button>
+                              <button onClick={() => setVersicherungen(vs => vs.map(x => x.id === v.id ? { ...x, police: null } : x))}
+                                className="text-navy-400 hover:text-red-500 ml-1">
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-navy-400 italic">Kein Dokument hinterlegt</p>
+                          )}
+                        </div>
+
                         {v.notizen && (
                           <div>
                             <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Notizen</p>
@@ -203,7 +248,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
         })
       )}
 
-      {/* Hinzufügen-Button unten */}
       {versicherungen.length > 0 && (
         <button onClick={oeffneNeu}
           className="w-full py-3 rounded-xl text-sm text-navy-400 hover:text-navy-600 transition-colors"
@@ -255,12 +299,55 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen 
                   </select>
                 </div>
               </div>
+
+              {/* Monatliche Belastung Vorschau */}
+              {form.beitrag && (
+                <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: '#edf7f2' }}>
+                  <span className="text-sm text-navy-600">Monatliche Belastung</span>
+                  <span className="text-sm font-semibold" style={{ color: '#2e6b52' }}>
+                    {monatsbeitrag(form).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                  </span>
+                </div>
+              )}
+
               <div>
                 <label className="label">Kündigungsdatum</label>
                 <input className="input" type="date"
                   value={form.kuendigungsdatum} onChange={e => setForm(f => ({ ...f, kuendigungsdatum: e.target.value }))} />
-                <p className="text-xs text-navy-400 mt-1">Du bekommst einen Hinweis wenn das Datum naht.</p>
+                <p className="text-xs text-navy-400 mt-1">Du siehst einen Hinweis wenn das Datum naht.</p>
               </div>
+
+              {/* Police Upload */}
+              <div>
+                <label className="label">Police hochladen <span className="text-navy-400 font-normal">(PDF, optional)</span></label>
+                {form.police ? (
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
+                    <FileText size={15} style={{ color: '#2e6b52' }} />
+                    <span className="text-sm text-navy-700 flex-1 truncate">{form.police.name}</span>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, police: null }))} className="text-navy-400 hover:text-red-500">
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-xl flex flex-col items-center justify-center gap-2 py-6 cursor-pointer transition-colors"
+                    style={{
+                      border: `2px dashed ${dragOver ? '#2e6b52' : '#d8ccb8'}`,
+                      background: dragOver ? '#edf7f2' : '#faf8f4',
+                    }}
+                    onClick={() => fileRef.current.click()}
+                    onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setDragOver(false); handleDatei(e.dataTransfer.files[0]) }}
+                  >
+                    <Upload size={20} className="text-navy-400" />
+                    <p className="text-sm text-navy-400">Datei hier ablegen oder <span className="text-navy-600 underline">auswählen</span></p>
+                    <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                      onChange={e => handleDatei(e.target.files[0])} />
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="label">Notizen <span className="text-navy-400 font-normal">(optional)</span></label>
                 <textarea className="input" rows={2} placeholder="Policennummer, Besonderheiten…"
