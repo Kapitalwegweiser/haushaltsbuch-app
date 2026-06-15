@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useCloudCollection } from './hooks/useCloudCollection'
+import { useCloudJsonCollection } from './hooks/useCloudJsonCollection'
 import Navigation from './components/Navigation'
 import Startseite from './components/Startseite'
 import ProfilSeite from './components/ProfilSeite'
@@ -28,51 +29,28 @@ function LadeScreen() {
   )
 }
 
-// File-Objekte können nicht in JSON serialisiert werden — Namen merken, Datei entfernen
-function serializeImmobilien(liste) {
-  return liste.map(immo => ({
-    ...immo,
-    mieter: (immo.mieter || []).map(m => ({
-      ...m,
-      dokument: m.dokument instanceof File ? { _fileName: m.dokument.name } : m.dokument,
-    })),
-    instandhaltung: (immo.instandhaltung || []).map(i => ({
-      ...i,
-      dokument: i.dokument instanceof File ? { _fileName: i.dokument.name } : i.dokument,
-    })),
-    dokumente: (immo.dokumente || []).map(d => ({
-      ...d,
-      datei: d.datei instanceof File ? { _fileName: d.datei.name } : d.datei,
-    })),
-  }))
-}
-
 function AppInner() {
   const { user, loading: authLoading, abmelden } = useAuth()
   const [aktivesModul, setAktivesModul] = useState('startseite')
-  const [aktiveSeite, setAktiveSeite] = useState('dashboard')
+  const [aktiveSeite, setAktiveSeite]   = useState('dashboard')
 
-  // Bei jedem Login immer zur Startseite — verhindert Verbleib auf letzter Seite
+  // Bei Login immer zur Startseite
   const vorigerUser = useRef(null)
   useEffect(() => {
-    if (user && !vorigerUser.current) {
-      setAktivesModul('startseite')
-    }
+    if (user && !vorigerUser.current) setAktivesModul('startseite')
     vorigerUser.current = user ?? null
   }, [user])
 
-  // Onboarding: direkt aus localStorage lesen/schreiben nach User-ID (nicht über Hook mit dynamischem Key)
+  // Onboarding & Tour — bleiben in localStorage (gerätespezifisch ist ok)
   const [onboardingAbgeschlossen, setOnboardingAbgeschlossenState] = useState(false)
-  const [tourAbgeschlossen, setTourAbgeschlossenState] = useState(false)
+  const [tourAbgeschlossen, setTourAbgeschlossenState]             = useState(false)
   const onboardingInitialisiert = useRef(false)
 
   useEffect(() => {
     if (user?.id && !onboardingInitialisiert.current) {
       onboardingInitialisiert.current = true
-      const key = `kw_onboarding_done_${user.id}`
-      const gespeichert = localStorage.getItem(key)
-      // Auch alten globalen Key prüfen (Migration)
-      const altKey = localStorage.getItem('kw_onboarding_done_v3')
+      const gespeichert = localStorage.getItem(`kw_onboarding_done_${user.id}`)
+      const altKey      = localStorage.getItem('kw_onboarding_done_v3')
       setOnboardingAbgeschlossenState(gespeichert === 'true' || altKey === 'true')
       setTourAbgeschlossenState(localStorage.getItem(`kw_tour_done_${user.id}`) === 'true')
     }
@@ -80,76 +58,28 @@ function AppInner() {
 
   function setOnboardingAbgeschlossen(val) {
     setOnboardingAbgeschlossenState(val)
-    if (user?.id) {
-      localStorage.setItem(`kw_onboarding_done_${user.id}`, String(val))
-    }
+    if (user?.id) localStorage.setItem(`kw_onboarding_done_${user.id}`, String(val))
   }
 
   function tourSchliessen() {
     setTourAbgeschlossenState(true)
-    if (user?.id) {
-      localStorage.setItem(`kw_tour_done_${user.id}`, 'true')
-    }
+    if (user?.id) localStorage.setItem(`kw_tour_done_${user.id}`, 'true')
   }
 
-  // Immobilien: in localStorage pro User gespeichert
-  const [immobilien, setImmobilienState] = useState([])
-  const immobilienInitialisiert = useRef(false)
-
-  useEffect(() => {
-    if (user?.id && !immobilienInitialisiert.current) {
-      immobilienInitialisiert.current = true
-      const key = `kw_immobilien_${user.id}`
-      try {
-        const gespeichert = localStorage.getItem(key)
-        if (gespeichert) setImmobilienState(JSON.parse(gespeichert))
-      } catch { /* ignore */ }
-    }
-  }, [user?.id])
-
-  const setImmobilien = useCallback((neu) => {
-    const liste = typeof neu === 'function' ? neu(immobilien) : neu
-    setImmobilienState(liste)
-    if (user?.id) {
-      try {
-        localStorage.setItem(`kw_immobilien_${user.id}`, JSON.stringify(serializeImmobilien(liste)))
-      } catch { /* ignore */ }
-    }
-  }, [user?.id, immobilien])
-
-  // Versicherungen: in localStorage pro User gespeichert
-  const [versicherungen, setVersicherungenState] = useState([])
-  const versicherungenInitialisiert = useRef(false)
-
-  useEffect(() => {
-    if (user?.id && !versicherungenInitialisiert.current) {
-      versicherungenInitialisiert.current = true
-      try {
-        const gespeichert = localStorage.getItem(`kw_versicherungen_${user.id}`)
-        if (gespeichert) setVersicherungenState(JSON.parse(gespeichert))
-      } catch { /* ignore */ }
-    }
-  }, [user?.id])
-
-  const setVersicherungen = useCallback((neu) => {
-    const liste = typeof neu === 'function' ? neu(versicherungen) : neu
-    setVersicherungenState(liste)
-    if (user?.id) {
-      try { localStorage.setItem(`kw_versicherungen_${user.id}`, JSON.stringify(liste)) } catch { /* ignore */ }
-    }
-  }, [user?.id, versicherungen])
-
-  const [einnahmen, setEinnahmen, einnahmenLaden] = useCloudCollection('einnahmen', user?.id)
-  const [fixkosten, setFixkosten, fixkostenLaden] = useCloudCollection('fixkosten', user?.id)
+  // Alle Daten über Supabase — geräteübergreifend synchron
+  const [einnahmen,     setEinnahmen,     einnahmenLaden]     = useCloudCollection('einnahmen',     user?.id)
+  const [fixkosten,     setFixkosten,     fixkostenLaden]     = useCloudCollection('fixkosten',     user?.id)
+  const [immobilien,    setImmobilien,    immobilienLaden]    = useCloudJsonCollection('immobilien',    user?.id)
+  const [versicherungen, setVersicherungen, versicherungenLaden] = useCloudJsonCollection('versicherungen', user?.id)
 
   if (authLoading) return <LadeScreen />
-  if (!user) return <LoginSeite />
+  if (!user)       return <LoginSeite />
 
-  const dataLaden = einnahmenLaden || fixkostenLaden
+  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden
   if (dataLaden) return <LadeScreen />
 
-  // Falls der User schon Daten hat, Onboarding automatisch überspringen
   const sollteOnboardingZeigen = !onboardingAbgeschlossen && einnahmen.length === 0 && fixkosten.length === 0
+  const sollTourZeigen         = onboardingAbgeschlossen && !tourAbgeschlossen
 
   const budgetSeiten = {
     dashboard: <Dashboard fixkosten={fixkosten} einnahmen={einnahmen} />,
@@ -166,9 +96,7 @@ function AppInner() {
       case 'budget':
         return budgetSeiten[aktiveSeite] ?? budgetSeiten.dashboard
       case 'immobilien':
-        if (aktiveSeite === 'steueruebersicht')
-          return <SteuerUebersichtSeite immobilien={immobilien} />
-        // 'liste' oder jeder andere Wert → Immobilienliste/Detail
+        if (aktiveSeite === 'steueruebersicht') return <SteuerUebersichtSeite immobilien={immobilien} />
         return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} />
       case 'versicherungen':
         return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} einnahmen={einnahmen} />
@@ -178,8 +106,6 @@ function AppInner() {
         return <Startseite user={user} einnahmen={einnahmen} fixkosten={fixkosten} immobilien={immobilien} versicherungen={versicherungen} setAktivesModul={setAktivesModul} setAktiveSeite={setAktiveSeite} />
     }
   }
-
-  const sollTourZeigen = onboardingAbgeschlossen && !tourAbgeschlossen
 
   return (
     <div className="flex min-h-screen">
@@ -191,10 +117,7 @@ function AppInner() {
         />
       )}
       {!sollteOnboardingZeigen && sollTourZeigen && (
-        <AppTour
-          onSchliessen={tourSchliessen}
-          userName={user.user_metadata?.full_name}
-        />
+        <AppTour onSchliessen={tourSchliessen} userName={user.user_metadata?.full_name} />
       )}
 
       <Navigation
@@ -206,7 +129,6 @@ function AppInner() {
       />
 
       <main className="flex-1 flex flex-col overflow-x-hidden">
-        {/* Top-Bar mit Logout */}
         <div className="hidden md:flex items-center justify-end px-8 py-3 border-b" style={{ borderColor: '#e8dece', background: '#faf8f4' }}>
           <div className="flex items-center gap-3">
             <span className="text-xs text-navy-400">{user.user_metadata?.full_name || user.email}</span>
@@ -214,8 +136,7 @@ function AppInner() {
               onClick={abmelden}
               className="flex items-center gap-1.5 text-xs text-navy-500 hover:text-red-500 transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100"
             >
-              <LogOut size={13} />
-              Abmelden
+              <LogOut size={13} /> Abmelden
             </button>
           </div>
         </div>
