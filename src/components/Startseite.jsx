@@ -1,11 +1,11 @@
-import { Building2, ChevronRight, Wallet, Shield } from 'lucide-react'
+import { Building2, ChevronRight, Wallet, Shield, Tv, Users } from 'lucide-react'
 import { monatlicherBetrag, monatlicheEinnahme } from '../data/kategorien'
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 }
 
-export default function Startseite({ user, einnahmen, fixkosten, immobilien = [], versicherungen = [], setAktivesModul, setAktiveSeite }) {
+export default function Startseite({ user, einnahmen, fixkosten, immobilien = [], versicherungen = [], abos = [], vereine = [], setAktivesModul, setAktiveSeite }) {
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
   const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const sparBetrag = einnahmenSumme - fixSumme
@@ -140,6 +140,56 @@ export default function Startseite({ user, einnahmen, fixkosten, immobilien = []
                   versicherungen.length > 0 ? 'bg-brand-500/10 text-brand-600' : 'bg-navy-100 text-navy-400'
                 }`}>
                   {versicherungen.length > 0 ? `${versicherungen.length} Versicherung${versicherungen.length !== 1 ? 'en' : ''}` : 'Noch nicht eingerichtet'}
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* Abos */}
+          <button
+            onClick={() => navigiere('abos')}
+            className="card text-left group transition-all duration-200 hover:shadow-md h-full"
+            style={{ borderColor: '#d8ccba' }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#5b4fa8' }}>
+                <Tv size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-serif text-base font-semibold text-navy-700">Abos</h3>
+                  <ChevronRight size={15} className="text-navy-300 group-hover:text-brand-500 transition-colors shrink-0" />
+                </div>
+                <p className="text-xs text-navy-400 leading-relaxed">Alle Abonnements und ihre monatlichen Kosten im Überblick</p>
+                <span className={`inline-block mt-2.5 text-[10px] font-medium px-2 py-0.5 rounded-full tracking-wide ${
+                  abos.length > 0 ? 'bg-brand-500/10 text-brand-600' : 'bg-navy-100 text-navy-400'
+                }`}>
+                  {abos.length > 0 ? `${abos.length} Abo${abos.length !== 1 ? 's' : ''}` : 'Noch nicht eingerichtet'}
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* Vereine */}
+          <button
+            onClick={() => navigiere('vereine')}
+            className="card text-left group transition-all duration-200 hover:shadow-md h-full"
+            style={{ borderColor: '#d8ccba' }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#1a7ea8' }}>
+                <Users size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-serif text-base font-semibold text-navy-700">Vereine</h3>
+                  <ChevronRight size={15} className="text-navy-300 group-hover:text-brand-500 transition-colors shrink-0" />
+                </div>
+                <p className="text-xs text-navy-400 leading-relaxed">Mitgliedsbeiträge und Vereine im Überblick</p>
+                <span className={`inline-block mt-2.5 text-[10px] font-medium px-2 py-0.5 rounded-full tracking-wide ${
+                  vereine.length > 0 ? 'bg-brand-500/10 text-brand-600' : 'bg-navy-100 text-navy-400'
+                }`}>
+                  {vereine.length > 0 ? `${vereine.length} Verein${vereine.length !== 1 ? 'e' : ''}` : 'Noch nicht eingerichtet'}
                 </span>
               </div>
             </div>
