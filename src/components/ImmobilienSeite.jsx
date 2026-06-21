@@ -222,6 +222,36 @@ function TilgungsplanChart({ finanzierung }) {
   )
 }
 
+// ─── Datumsfeld mit schnellem Jahreswechsel ───────────────────────────────────
+// Normales <input type="date"> zwingt zum Durchklicken der Monate, um ins Zieljahr
+// zu gelangen. Das zusätzliche Jahres-Dropdown erlaubt direktes Springen.
+function KaufdatumInput({ value, onChange }) {
+  const heute = new Date().getFullYear()
+  const jahre = Array.from({ length: heute - 1950 + 2 }, (_, i) => heute + 1 - i)
+  const aktuellesJahr = value ? value.slice(0, 4) : ''
+
+  function jahrAendern(jahr) {
+    if (!jahr) return
+    const rest = value ? value.slice(4) : '-01-01'
+    onChange(`${jahr}${rest}`)
+  }
+
+  return (
+    <div className="flex gap-2">
+      <select
+        className="input"
+        style={{ maxWidth: '110px' }}
+        value={aktuellesJahr}
+        onChange={e => jahrAendern(e.target.value)}
+      >
+        <option value="">Jahr…</option>
+        {jahre.map(j => <option key={j} value={j}>{j}</option>)}
+      </select>
+      <input className="input" type="date" value={value} onChange={e => onChange(e.target.value)} />
+    </div>
+  )
+}
+
 // ─── Datei-Upload ─────────────────────────────────────────────────────────────
 function DokumentUpload({ dokument, onChange, label = 'Dokument hochladen' }) {
   const ref = useRef()
@@ -310,7 +340,7 @@ function UebersichtTab({ immobilie, onSave }) {
             </div>
             <div>
               <label className="label">Kaufdatum</label>
-              <input className="input" type="date" value={form.kaufdatum} onChange={e => setForm({ ...form, kaufdatum: e.target.value })} />
+              <KaufdatumInput value={form.kaufdatum} onChange={v => setForm({ ...form, kaufdatum: v })} />
             </div>
           </div>
           <div className="flex gap-2">
@@ -1477,6 +1507,141 @@ function DokumenteTab({ immobilie, onSave }) {
   )
 }
 
+// ─── Wirtschaftspläne-Tab ─────────────────────────────────────────────────────
+const LEER_WIRTSCHAFTSPLAN = { id: null, jahr: String(new Date().getFullYear()), typ: 'jahresabrechnung', betrag: '', beschreibung: '', dokument: null }
+
+function WirtschaftsplaeneTab({ immobilie, onSave }) {
+  const [formOffen, setFormOffen] = useState(false)
+  const [form, setForm] = useState(LEER_WIRTSCHAFTSPLAN)
+  const [bearbeitungId, setBearbeitungId] = useState(null)
+
+  const eintraege = (immobilie.wirtschaftsplaene || []).sort((a, b) => b.jahr.localeCompare(a.jahr))
+
+  function speichern() {
+    if (!form.jahr) return
+    const eintrag = { ...form, betrag: Number(form.betrag) || 0, id: bearbeitungId ?? Date.now().toString() }
+    const liste = bearbeitungId
+      ? immobilie.wirtschaftsplaene.map(e => e.id === bearbeitungId ? eintrag : e)
+      : [...(immobilie.wirtschaftsplaene || []), eintrag]
+    onSave({ ...immobilie, wirtschaftsplaene: liste })
+    setForm(LEER_WIRTSCHAFTSPLAN); setBearbeitungId(null); setFormOffen(false)
+  }
+
+  function loeschen(id) {
+    onSave({ ...immobilie, wirtschaftsplaene: immobilie.wirtschaftsplaene.filter(x => x.id !== id) })
+  }
+
+  const TYP_LABEL = { wirtschaftsplan: 'Wirtschaftsplan', jahresabrechnung: 'Jahresabrechnung' }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+        <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-500" />
+        <div className="space-y-1.5">
+          <p className="font-medium">Steuerlich absetzbar bei Vermietung:</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            <li>Verwaltungskosten (Hausverwaltung)</li>
+            <li>Instandhaltungsrücklage – nur soweit sie tatsächlich für Erhaltungsmaßnahmen verausgabt wurde</li>
+            <li>Betriebskosten, die nicht auf Mieter umgelegt werden können</li>
+            <li>Versicherungs- und Grundsteueranteile aus der Abrechnung</li>
+          </ul>
+          <p className="text-xs opacity-80">Nicht abzugsfähig sind reine Rücklagenzuführungen ohne Mittelverwendung. Im Zweifel mit Steuerberater prüfen.</p>
+        </div>
+      </div>
+
+      {eintraege.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="card text-center">
+            <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Einträge</p>
+            <p className="text-xl font-bold text-navy-700">{eintraege.length}</p>
+          </div>
+          <div className="card text-center">
+            <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Summe</p>
+            <p className="text-xl font-bold text-navy-700">{euro(eintraege.reduce((s, e) => s + (Number(e.betrag) || 0), 0))}</p>
+          </div>
+        </div>
+      )}
+
+      {!formOffen ? (
+        <button className="btn-primary" onClick={() => setFormOffen(true)}><Plus size={15} /> Eintrag hinzufügen</button>
+      ) : (
+        <div className="card space-y-4">
+          <h3 className="font-serif text-lg font-semibold text-navy-700">{bearbeitungId ? 'Bearbeiten' : 'Neuer Eintrag'}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Jahr</label>
+              <input className="input" type="number" min="2000" max="2099" value={form.jahr}
+                onChange={e => setForm({ ...form, jahr: e.target.value })} placeholder="2024" />
+            </div>
+            <div>
+              <label className="label">Art</label>
+              <select className="input" value={form.typ} onChange={e => setForm({ ...form, typ: e.target.value })}>
+                <option value="wirtschaftsplan">Wirtschaftsplan</option>
+                <option value="jahresabrechnung">Jahresabrechnung</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Betrag (€) <span className="text-navy-400 font-normal normal-case">Nachzahlung/Guthaben</span></label>
+              <input className="input" type="number" value={form.betrag}
+                onChange={e => setForm({ ...form, betrag: e.target.value })} placeholder="0" />
+            </div>
+            <div>
+              <label className="label">Beschreibung</label>
+              <input className="input" value={form.beschreibung}
+                onChange={e => setForm({ ...form, beschreibung: e.target.value })} placeholder="z.B. Jahresabrechnung 2024" />
+            </div>
+          </div>
+          <DokumentUpload label="Dokument hochladen" dokument={form.dokument} onChange={dok => setForm({ ...form, dokument: dok })} />
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={speichern}><Check size={14} /> Speichern</button>
+            <button className="btn-secondary" onClick={() => { setFormOffen(false); setForm(LEER_WIRTSCHAFTSPLAN); setBearbeitungId(null) }}><X size={14} /> Abbrechen</button>
+          </div>
+        </div>
+      )}
+
+      {eintraege.length === 0 ? (
+        <div className="card text-center py-8 border-dashed">
+          <FileText size={32} className="mx-auto mb-2 text-navy-300" />
+          <p className="font-serif text-lg text-navy-600 mb-1">Noch keine Wirtschaftspläne</p>
+          <p className="text-sm text-navy-400">Erfasse Wirtschaftspläne und Jahresabrechnungen.</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          {eintraege.map((e, i) => (
+            <div key={e.id}
+              className={`px-4 py-3 flex items-start gap-3 hover:bg-navy-50/40 ${i < eintraege.length - 1 ? 'border-b border-navy-50' : ''}`}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs bg-navy-100 text-navy-600 px-2 py-0.5 rounded-full">{TYP_LABEL[e.typ] || e.typ}</span>
+                  <span className="text-xs text-navy-400">{e.jahr}</span>
+                </div>
+                <p className="text-sm font-medium text-navy-700 mt-1">{e.beschreibung || '—'}</p>
+                {e.dokument instanceof File && (
+                  <button onClick={() => { const url = URL.createObjectURL(e.dokument); window.open(url) }}
+                    className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 mt-1">
+                    <FileText size={12} /> {e.dokument.name}
+                  </button>
+                )}
+                {e.dokument && !(e.dokument instanceof File) && e.dokument._fileName && (
+                  <span className="flex items-center gap-1 text-xs text-navy-400 mt-1"><FileText size={11} /> {e.dokument._fileName}</span>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-navy-700">{e.betrag ? euro(e.betrag) : '—'}</p>
+                <div className="flex gap-1 justify-end mt-1">
+                  <button onClick={() => { setForm({ ...e, betrag: e.betrag?.toString() || '' }); setBearbeitungId(e.id); setFormOffen(true) }}
+                    className="p-1 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={13} /></button>
+                  <button onClick={() => loeschen(e.id)} className="p-1 text-red-400 hover:text-red-600 rounded"><Trash2 size={13} /></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Detailansicht ────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'uebersicht',        label: 'Übersicht',              icon: Home },
@@ -1484,6 +1649,7 @@ const TABS = [
   { id: 'mieter',            label: 'Mieter',                 icon: User },
   { id: 'finanzierung',      label: 'Finanzierung',           icon: Landmark },
   { id: 'instandhaltung',    label: 'Instandhaltung',         icon: Wrench },
+  { id: 'wirtschaftsplaene', label: 'Wirtschaftspläne',       icon: Calculator },
   { id: 'steuern',           label: 'Steuern',                icon: Euro },
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
@@ -1545,6 +1711,7 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
       {aktiverTab === 'mieter'             && <MieterTab         immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'finanzierung'       && <FinanzierungTab   immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'instandhaltung'     && <InstandhaltungTab immobilie={immobilie} onSave={onSave} />}
+      {aktiverTab === 'wirtschaftsplaene'  && <WirtschaftsplaeneTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'steuern'           && <SteuernTab         immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'dokumente'         && <DokumenteTab       immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'eigentuemerversamm' && <EigentuemerTab    immobilie={immobilie} onSave={onSave} />}
@@ -1592,11 +1759,11 @@ function NeuFormular({ onSpeichern, onAbbrechen }) {
           </div>
           <div>
             <label className="label">Kaufdatum</label>
-            <input className="input" type="date" value={form.kaufdatum} onChange={e => setForm({ ...form, kaufdatum: e.target.value })} />
+            <KaufdatumInput value={form.kaufdatum} onChange={v => setForm({ ...form, kaufdatum: v })} />
           </div>
         </div>
         <div className="flex gap-2">
-          <button className="btn-primary" onClick={() => { if (form.name.trim()) onSpeichern({ name: '', adresse: '', flaeche: '', zimmer: '', kaufpreis: '', kaufdatum: '', mieter: [], finanzierung: {}, instandhaltung: [], steuern: [], eigentuemerversammlungen: [], ...form, id: Date.now().toString() }) }}>
+          <button className="btn-primary" onClick={() => { if (form.name.trim()) onSpeichern({ name: '', adresse: '', flaeche: '', zimmer: '', kaufpreis: '', kaufdatum: '', mieter: [], finanzierung: {}, instandhaltung: [], wirtschaftsplaene: [], steuern: [], eigentuemerversammlungen: [], ...form, id: Date.now().toString() }) }}>
             <Check size={14} /> Anlegen
           </button>
           <button className="btn-secondary" onClick={onAbbrechen}><X size={14} /> Abbrechen</button>

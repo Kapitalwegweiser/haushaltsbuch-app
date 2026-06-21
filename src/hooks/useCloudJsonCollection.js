@@ -11,6 +11,9 @@ function stripFiles(item) {
   if (clean.mieter)       clean.mieter       = (clean.mieter       || []).map(m => ({ ...m, dokument: m.dokument instanceof File ? { _fileName: m.dokument.name } : (m.dokument?._fileName ? m.dokument : null) }))
   if (clean.instandhaltung) clean.instandhaltung = (clean.instandhaltung || []).map(i => ({ ...i, dokument: i.dokument instanceof File ? { _fileName: i.dokument.name } : (i.dokument?._fileName ? i.dokument : null) }))
   if (clean.dokumente)    clean.dokumente    = (clean.dokumente    || []).map(d => ({ ...d, datei: d.datei instanceof File ? { _fileName: d.datei.name } : (d.datei?._fileName ? d.datei : null) }))
+  if (clean.wirtschaftsplaene) clean.wirtschaftsplaene = (clean.wirtschaftsplaene || []).map(w => ({ ...w, dokument: w.dokument instanceof File ? { _fileName: w.dokument.name } : (w.dokument?._fileName ? w.dokument : null) }))
+  if (clean.steuern)      clean.steuern      = (clean.steuern      || []).map(s => ({ ...s, dokument: s.dokument instanceof File ? { _fileName: s.dokument.name } : (s.dokument?._fileName ? s.dokument : null) }))
+  if (clean.eigentuemerversammlungen) clean.eigentuemerversammlungen = (clean.eigentuemerversammlungen || []).map(p => ({ ...p, dokument: p.dokument instanceof File ? { _fileName: p.dokument.name } : (p.dokument?._fileName ? p.dokument : null) }))
   return clean
 }
 
