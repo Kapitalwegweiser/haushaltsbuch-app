@@ -126,8 +126,8 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
             {eintraege.map(f => (
               <tr key={f.id} className="border-b hover:bg-navy-50/40 transition-colors" style={{ borderColor: '#f0e8dc' }}>
                 <td className="px-4 py-3 max-w-0">
-                  <p className="font-medium text-navy-700 text-sm break-words">{f.name}</p>
-                  <p className="text-xs text-navy-400 break-words">{f.kategorie}</p>
+                  <p className="font-medium text-navy-700 text-sm break-words" lang="de" style={{ hyphens: 'auto' }}>{f.name}</p>
+                  <p className="text-xs text-navy-400 break-words" lang="de" style={{ hyphens: 'auto' }}>{f.kategorie}</p>
                 </td>
                 <td className="px-4 py-3 text-right text-navy-700 text-sm font-semibold">{euro(f.betrag)}</td>
                 <td className="px-4 py-3 hidden sm:table-cell">
