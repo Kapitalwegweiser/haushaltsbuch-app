@@ -59,6 +59,13 @@
     padding-top: 0;
     padding-bottom: 0;
   }
+  /* iOS Safari zoomt automatisch in jedes Feld mit < 16px Schrift beim Fokussieren
+     und zoomt danach nicht zuverlässig zurück — daher auf Mobilgeräten 16px erzwingen. */
+  @media (max-width: 640px) {
+    .input, textarea.input, select.input {
+      font-size: 16px;
+    }
+  }
   .label {
     @apply block text-navy-400 mb-1.5 font-medium;
     font-size: 10px;
