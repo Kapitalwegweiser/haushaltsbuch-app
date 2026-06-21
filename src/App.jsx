@@ -13,6 +13,8 @@ import FixkostenSeite from './components/FixkostenSeite'
 import FinanzScore from './components/FinanzScore'
 import Wachstumsprognose from './components/Wachstumsprognose'
 import VersicherungenSeite from './components/VersicherungenSeite'
+import TrackerSeite from './components/TrackerSeite'
+import { Tv, Users } from 'lucide-react'
 import Onboarding from './components/Onboarding'
 import AppTour from './components/AppTour'
 import LoginSeite from './components/LoginSeite'
@@ -71,11 +73,13 @@ function AppInner() {
   const [fixkosten,     setFixkosten,     fixkostenLaden]     = useCloudCollection('fixkosten',     user?.id)
   const [immobilien,    setImmobilien,    immobilienLaden]    = useCloudJsonCollection('immobilien',    user?.id)
   const [versicherungen, setVersicherungen, versicherungenLaden] = useCloudJsonCollection('versicherungen', user?.id)
+  const [abos,          setAbos,          abosLaden]          = useCloudJsonCollection('abos',          user?.id)
+  const [vereine,       setVereine,       vereineLaden]        = useCloudJsonCollection('vereine',       user?.id)
 
   if (authLoading) return <LadeScreen />
   if (!user)       return <LoginSeite />
 
-  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden
+  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden || abosLaden || vereineLaden
   if (dataLaden) return <LadeScreen />
 
   const sollteOnboardingZeigen = !onboardingAbgeschlossen && einnahmen.length === 0 && fixkosten.length === 0
@@ -100,6 +104,14 @@ function AppInner() {
         return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} />
       case 'versicherungen':
         return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} einnahmen={einnahmen} />
+      case 'abos':
+        return <TrackerSeite items={abos} setItems={setAbos} titel="Abos" ueberschrift="Meine Abos"
+          anbieterLabel="Anbieter" leerTitel="Noch keine Abos" leerText="Füge dein erstes Abo hinzu."
+          farbe="#5b4fa8" bg="#f0eeff" icon={Tv} />
+      case 'vereine':
+        return <TrackerSeite items={vereine} setItems={setVereine} titel="Vereine" ueberschrift="Meine Vereine"
+          anbieterLabel="Verein" leerTitel="Noch keine Vereine" leerText="Füge deinen ersten Verein hinzu."
+          farbe="#1a7ea8" bg="#e8f5fc" icon={Users} />
       case 'profil':
         return <ProfilSeite user={user} abmelden={abmelden} />
       default:

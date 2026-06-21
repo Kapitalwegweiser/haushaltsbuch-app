@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   LayoutDashboard, List, TrendingUp,
   Menu, X, Award, BarChart2, Home, Wallet,
-  User, ChevronDown, ChevronRight, Building2, Receipt, LogOut, Shield
+  User, ChevronDown, ChevronRight, Building2, Receipt, LogOut, Shield, Tv, Users
 } from 'lucide-react'
 
 const BUDGET_ITEMS = [
@@ -23,6 +23,8 @@ const TOP_ITEMS = [
   { id: 'budget',        label: 'Budgetplanung',   icon: Wallet,    kinder: BUDGET_ITEMS },
   { id: 'immobilien',    label: 'Immobilien',      icon: Building2, kinder: IMMOBILIEN_ITEMS },
   { id: 'versicherungen',label: 'Versicherungen',  icon: Shield },
+  { id: 'abos',          label: 'Abos',            icon: Tv },
+  { id: 'vereine',       label: 'Vereine',         icon: Users },
 ]
 
 const BOTTOM_ITEM = { id: 'profil', label: 'Profil', icon: User }
