@@ -1,10 +1,43 @@
 import { useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { monatlicherBetrag, monatlicheEinnahme, MONATE } from '../data/kategorien'
-import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle } from 'lucide-react'
+import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle, Tv, Users } from 'lucide-react'
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+}
+
+// Abos/Vereine nutzen dasselbe Intervall-Schema wie Versicherungen (monatlich/vierteljaehrlich/halbjaehrlich/jaehrlich)
+function jahresbetragTracker(v) {
+  const b = parseFloat(v.beitrag) || 0
+  if (v.intervall === 'monatlich')        return b * 12
+  if (v.intervall === 'halbjaehrlich')    return b * 2
+  if (v.intervall === 'vierteljaehrlich') return b * 4
+  return b
+}
+function monatsbetragTracker(v) { return jahresbetragTracker(v) / 12 }
+
+function TrackerListe({ titel, items, farbe, icon: Icon }) {
+  if (items.length === 0) return null
+  const summe = items.reduce((s, v) => s + monatsbetragTracker(v), 0)
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-serif font-semibold text-navy-700 flex items-center gap-2">
+          <Icon size={16} style={{ color: farbe }} /> {titel}
+        </h3>
+        <span className="text-sm font-bold" style={{ color: farbe }}>{euro(summe)} / Mo.</span>
+      </div>
+      <div className="space-y-1.5">
+        {items.map(v => (
+          <div key={v.id} className="flex justify-between text-sm">
+            <span className="text-navy-600 truncate max-w-[60%]">{v.name}</span>
+            <span className="text-navy-500">{euro(monatsbetragTracker(v))} / Mo.</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function AusgabenListe({ fixkosten }) {
@@ -120,10 +153,13 @@ function JahresKostenKalender({ fixkosten }) {
   )
 }
 
-export default function Dashboard({ fixkosten, einnahmen }) {
+export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [] }) {
   const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const abosSumme = abos.reduce((s, v) => s + monatsbetragTracker(v), 0)
+  const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
+  const gesamtAusgaben = fixSumme + abosSumme + vereineSumme
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
-  const sparBetrag = einnahmenSumme - fixSumme
+  const sparBetrag = einnahmenSumme - gesamtAusgaben
   const sparquote = einnahmenSumme > 0 ? (sparBetrag / einnahmenSumme) * 100 : 0
 
   const MONATE_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -141,7 +177,7 @@ export default function Dashboard({ fixkosten, einnahmen }) {
     return {
       monat: name,
       Einnahmen: +(einnahmenSumme + sonderInkl).toFixed(2),
-      Ausgaben: +(monatlicheFixkosten + jahresKosten).toFixed(2),
+      Ausgaben: +(monatlicheFixkosten + jahresKosten + abosSumme + vereineSumme).toFixed(2),
     }
   })
 
@@ -167,7 +203,7 @@ export default function Dashboard({ fixkosten, einnahmen }) {
           </div>
           <div className="min-w-0">
             <p className="text-xs text-navy-400 truncate">Ausgaben / Mo.</p>
-            <p className="text-lg font-bold text-navy-700 truncate">{euro(fixSumme)}</p>
+            <p className="text-lg font-bold text-navy-700 truncate">{euro(gesamtAusgaben)}</p>
           </div>
         </div>
 
@@ -230,6 +266,9 @@ export default function Dashboard({ fixkosten, einnahmen }) {
               <AusgabenListe fixkosten={fixkosten} />
             </div>
           )}
+
+          <TrackerListe titel="Abos" items={abos} farbe="#5b4fa8" icon={Tv} />
+          <TrackerListe titel="Vereine" items={vereine} farbe="#1a7ea8" icon={Users} />
         </div>
       )}
     </div>

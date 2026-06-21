@@ -86,7 +86,7 @@ function AppInner() {
   const sollTourZeigen         = onboardingAbgeschlossen && !tourAbgeschlossen
 
   const budgetSeiten = {
-    dashboard: <Dashboard fixkosten={fixkosten} einnahmen={einnahmen} />,
+    dashboard: <Dashboard fixkosten={fixkosten} einnahmen={einnahmen} abos={abos} vereine={vereine} />,
     score:     <FinanzScore fixkosten={fixkosten} einnahmen={einnahmen} />,
     wachstum:  <Wachstumsprognose einnahmen={einnahmen} fixkosten={fixkosten} />,
     einnahmen: <EinnahmenSeite einnahmen={einnahmen} setEinnahmen={setEinnahmen} />,
