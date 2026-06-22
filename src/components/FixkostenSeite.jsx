@@ -117,23 +117,23 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
         <table className="w-full text-sm table-fixed">
           <colgroup>
             <col />
-            <col style={{ width: '120px' }} />
+            <col style={{ width: '90px' }} />
             <col style={{ width: '150px' }} className="hidden sm:table-column" />
-            <col style={{ width: '110px' }} />
-            <col style={{ width: '72px' }} />
+            <col style={{ width: '110px' }} className="hidden sm:table-column" />
+            <col style={{ width: '64px' }} />
           </colgroup>
           <tbody>
             {eintraege.map(f => (
               <tr key={f.id} className="border-b hover:bg-navy-50/40 transition-colors" style={{ borderColor: '#f0e8dc' }}>
                 <td className="px-4 py-3 max-w-0">
-                  <p className="font-medium text-navy-700 text-sm break-words" lang="de" style={{ WebkitHyphens: 'auto', msHyphens: 'auto', hyphens: 'auto', overflowWrap: 'break-word' }}>{f.name}</p>
-                  <p className="text-xs text-navy-400 break-words" lang="de" style={{ WebkitHyphens: 'auto', msHyphens: 'auto', hyphens: 'auto', overflowWrap: 'break-word' }}>{f.kategorie}</p>
+                  <p className="font-medium text-navy-700 text-sm break-words" style={{ overflowWrap: 'break-word' }}>{f.name}</p>
+                  <p className="text-xs text-navy-400 break-words" style={{ overflowWrap: 'break-word' }}>{f.kategorie}</p>
                 </td>
                 <td className="px-4 py-3 text-right text-navy-700 text-sm font-semibold">{euro(f.betrag)}</td>
                 <td className="px-4 py-3 hidden sm:table-cell">
                   <IntervallBadge intervall={f.intervall} abbuchungsmonat={f.abbuchungsmonat} />
                 </td>
-                <td className="px-4 py-3 text-right text-xs text-navy-500">{euro(monatlicherBetrag(f.betrag, f.intervall))}/Mo.</td>
+                <td className="px-4 py-3 text-right text-xs text-navy-500 hidden sm:table-cell">{euro(monatlicherBetrag(f.betrag, f.intervall))}/Mo.</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1 justify-end">
                     <button onClick={() => bearbeiten(f)} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={14} /></button>
