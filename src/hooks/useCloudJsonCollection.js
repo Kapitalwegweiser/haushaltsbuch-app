@@ -31,7 +31,6 @@ export function useCloudJsonCollection(tableName, userId) {
   const [data, setDataLocal] = useState([])
   const [loading, setLoading]   = useState(true)
   const dataRef      = useRef([])
-  const remoteUpdate = useRef(false)
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
@@ -52,7 +51,6 @@ export function useCloudJsonCollection(tableName, userId) {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
-          remoteUpdate.current = true
           setDataLocal(prev => {
             let next
             if (payload.eventType === 'INSERT') {
@@ -69,7 +67,6 @@ export function useCloudJsonCollection(tableName, userId) {
             dataRef.current = next
             return next
           })
-          setTimeout(() => { remoteUpdate.current = false }, 200)
         }
       )
       .subscribe()
@@ -84,7 +81,7 @@ export function useCloudJsonCollection(tableName, userId) {
     setDataLocal(newData)
     dataRef.current = newData
 
-    if (remoteUpdate.current || !userId) return
+    if (!userId) return
 
     const { inserted, deleted, updated } = diff(oldData, newData)
 
