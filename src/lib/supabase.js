@@ -32,3 +32,20 @@ window.addEventListener('beforeunload', e => {
     e.returnValue = ''
   }
 })
+
+// Fehler beim Speichern/Löschen wurden bisher nur in der Browser-Konsole protokolliert
+// und sind dadurch nie aufgefallen. reportSyncError macht sie zusätzlich für die UI
+// sichtbar (siehe SyncErrorBanner), damit ein fehlgeschlagener Schreibvorgang nicht
+// unbemerkt zu "verschwundenen" Einträgen führt.
+const syncErrorListeners = new Set()
+
+export function reportSyncError(context, error) {
+  console.error(`Supabase-Fehler (${context}):`, error)
+  const message = error?.message || error?.error_description || String(error)
+  syncErrorListeners.forEach(fn => fn({ context, message }))
+}
+
+export function onSyncError(fn) {
+  syncErrorListeners.add(fn)
+  return () => syncErrorListeners.delete(fn)
+}

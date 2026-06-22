@@ -18,6 +18,7 @@ import { Tv, Users } from 'lucide-react'
 import Onboarding from './components/Onboarding'
 import AppTour from './components/AppTour'
 import LoginSeite from './components/LoginSeite'
+import SyncErrorBanner from './components/SyncErrorBanner'
 import { Loader2, LogOut } from 'lucide-react'
 
 function LadeScreen() {
@@ -168,6 +169,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppInner />
+      <SyncErrorBanner />
     </AuthProvider>
   )
 }

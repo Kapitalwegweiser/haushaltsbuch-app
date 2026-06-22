@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase, trackWrite } from '../lib/supabase'
+import { supabase, trackWrite, reportSyncError } from '../lib/supabase'
 
 function diff(oldData, newData) {
   const inserted = newData.filter(n => !oldData.find(o => o.id === n.id))
@@ -30,7 +30,8 @@ export function useCloudCollection(tableName, userId) {
     supabase
       .from(tableName)
       .select('*')
-      .then(({ data: rows }) => {
+      .then(({ data: rows, error }) => {
+        if (error) reportSyncError(tableName, error)
         const clean = (rows || []).map(stripMeta)
         setDataLocal(clean)
         dataRef.current = clean
@@ -83,14 +84,14 @@ export function useCloudCollection(tableName, userId) {
     for (const item of [...inserted, ...updated]) {
       trackWrite(
         supabase.from(tableName).upsert({ ...item, user_id: userId }).then(({ error }) => {
-          if (error) console.error(`Fehler beim Speichern in ${tableName}:`, error)
+          if (error) reportSyncError(tableName, error)
         })
       )
     }
     for (const item of deleted) {
       trackWrite(
         supabase.from(tableName).delete().eq('id', item.id).then(({ error }) => {
-          if (error) console.error(`Fehler beim Löschen in ${tableName}:`, error)
+          if (error) reportSyncError(tableName, error)
         })
       )
     }
