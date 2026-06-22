@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, trackWrite } from '../lib/supabase'
 
 function diff(oldData, newData) {
   const inserted = newData.filter(n => !oldData.find(o => o.id === n.id))
@@ -80,14 +80,19 @@ export function useCloudCollection(tableName, userId) {
 
     const { inserted, deleted, updated } = diff(oldData, newData)
 
-    for (const item of inserted) {
-      await supabase.from(tableName).upsert({ ...item, user_id: userId })
-    }
-    for (const item of updated) {
-      await supabase.from(tableName).upsert({ ...item, user_id: userId })
+    for (const item of [...inserted, ...updated]) {
+      trackWrite(
+        supabase.from(tableName).upsert({ ...item, user_id: userId }).then(({ error }) => {
+          if (error) console.error(`Fehler beim Speichern in ${tableName}:`, error)
+        })
+      )
     }
     for (const item of deleted) {
-      await supabase.from(tableName).delete().eq('id', item.id)
+      trackWrite(
+        supabase.from(tableName).delete().eq('id', item.id).then(({ error }) => {
+          if (error) console.error(`Fehler beim Löschen in ${tableName}:`, error)
+        })
+      )
     }
   }, [tableName, userId])
 

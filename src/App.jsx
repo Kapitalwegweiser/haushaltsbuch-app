@@ -32,7 +32,7 @@ function LadeScreen() {
 }
 
 function AppInner() {
-  const { user, loading: authLoading, abmelden } = useAuth()
+  const { user, loading: authLoading, abmelden, meldetSichAb } = useAuth()
   const [aktivesModul, setAktivesModul] = useState('startseite')
   const [aktiveSeite, setAktiveSeite]   = useState('dashboard')
 
@@ -113,7 +113,7 @@ function AppInner() {
           anbieterLabel="Verein" leerTitel="Noch keine Vereine" leerText="Füge deinen ersten Verein hinzu."
           farbe="#1a7ea8" bg="#e8f5fc" icon={Users} />
       case 'profil':
-        return <ProfilSeite user={user} abmelden={abmelden} />
+        return <ProfilSeite user={user} abmelden={abmelden} meldetSichAb={meldetSichAb} />
       default:
         return <Startseite user={user} einnahmen={einnahmen} fixkosten={fixkosten} immobilien={immobilien} versicherungen={versicherungen} abos={abos} vereine={vereine} setAktivesModul={setAktivesModul} setAktiveSeite={setAktiveSeite} />
     }
@@ -138,6 +138,7 @@ function AppInner() {
         aktiveSeite={aktiveSeite}
         setAktiveSeite={setAktiveSeite}
         abmelden={abmelden}
+        meldetSichAb={meldetSichAb}
       />
 
       <main className="flex-1 flex flex-col overflow-x-hidden">
@@ -146,9 +147,10 @@ function AppInner() {
             <span className="text-xs text-navy-400">{user.user_metadata?.full_name || user.email}</span>
             <button
               onClick={abmelden}
-              className="flex items-center gap-1.5 text-xs text-navy-500 hover:text-red-500 transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100"
+              disabled={meldetSichAb}
+              className="flex items-center gap-1.5 text-xs text-navy-500 hover:text-red-500 transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100 disabled:opacity-50"
             >
-              <LogOut size={13} /> Abmelden
+              <LogOut size={13} /> {meldetSichAb ? 'Wird gespeichert…' : 'Abmelden'}
             </button>
           </div>
         </div>

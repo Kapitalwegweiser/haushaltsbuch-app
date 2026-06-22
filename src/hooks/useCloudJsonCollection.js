@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, trackWrite } from '../lib/supabase'
 
 // Speichert komplexe Objekte (mit Arrays, verschachtelten Daten) als JSONB in Supabase
 // Tabellen-Schema: { id text PK, user_id uuid, data jsonb }
@@ -87,16 +87,20 @@ export function useCloudJsonCollection(tableName, userId) {
 
     const { inserted, deleted, updated } = diff(oldData, newData)
 
-    for (const item of inserted) {
+    for (const item of [...inserted, ...updated]) {
       const { id, ...rest } = stripFiles(item)
-      await supabase.from(tableName).upsert({ id, user_id: userId, data: rest })
-    }
-    for (const item of updated) {
-      const { id, ...rest } = stripFiles(item)
-      await supabase.from(tableName).upsert({ id, user_id: userId, data: rest })
+      trackWrite(
+        supabase.from(tableName).upsert({ id, user_id: userId, data: rest }).then(({ error }) => {
+          if (error) console.error(`Fehler beim Speichern in ${tableName}:`, error)
+        })
+      )
     }
     for (const item of deleted) {
-      await supabase.from(tableName).delete().eq('id', item.id)
+      trackWrite(
+        supabase.from(tableName).delete().eq('id', item.id).then(({ error }) => {
+          if (error) console.error(`Fehler beim Löschen in ${tableName}:`, error)
+        })
+      )
     }
   }, [tableName, userId])
 

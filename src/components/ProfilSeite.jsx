@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { User, Mail, Lock, CheckCircle, AlertTriangle } from 'lucide-react'
 
-export default function ProfilSeite({ user, abmelden }) {
+export default function ProfilSeite({ user, abmelden, meldetSichAb }) {
   const [neuesPasswort, setNeuesPasswort] = useState('')
   const [passwortWdh, setPasswortWdh] = useState('')
   const [nameEdit, setNameEdit] = useState(user.user_metadata?.full_name || '')
@@ -144,8 +144,8 @@ export default function ProfilSeite({ user, abmelden }) {
       <div className="card border-red-100">
         <h3 className="font-serif text-lg font-semibold text-navy-900 mb-2">Abmelden</h3>
         <p className="text-sm text-navy-500 mb-4">Du wirst auf die Login-Seite weitergeleitet.</p>
-        <button onClick={abmelden} className="btn-danger px-4 py-2 text-sm font-medium">
-          Jetzt abmelden
+        <button onClick={abmelden} disabled={meldetSichAb} className="btn-danger px-4 py-2 text-sm font-medium disabled:opacity-50">
+          {meldetSichAb ? 'Wird gespeichert…' : 'Jetzt abmelden'}
         </button>
       </div>
     </div>

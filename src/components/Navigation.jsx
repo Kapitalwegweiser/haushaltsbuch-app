@@ -117,7 +117,7 @@ function NavInhalt({ aktivesModul, setAktivesModul, aktiveSeite, setAktiveSeite,
   )
 }
 
-export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite, setAktiveSeite, abmelden }) {
+export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite, setAktiveSeite, abmelden, meldetSichAb }) {
   const [menuOffen, setMenuOffen] = useState(false)
 
   return (
@@ -190,9 +190,10 @@ export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite,
               {abmelden && (
                 <button
                   onClick={abmelden}
-                  className="nav-link w-full text-red-500 hover:bg-red-50 hover:text-red-600 mt-1"
+                  disabled={meldetSichAb}
+                  className="nav-link w-full text-red-500 hover:bg-red-50 hover:text-red-600 mt-1 disabled:opacity-50"
                 >
-                  <LogOut size={16} /> Abmelden
+                  <LogOut size={16} /> {meldetSichAb ? 'Wird gespeichert…' : 'Abmelden'}
                 </button>
               )}
             </div>
