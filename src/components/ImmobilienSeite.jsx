@@ -27,6 +27,21 @@ function istAktiv(mieter) {
   return new Date(mieter.mietende) >= new Date()
 }
 
+// Liefert die aktuell gültige Kalt-/Nebenmiete unter Berücksichtigung von Staffelmieten
+// bzw. nachträglichen Mieterhöhungen (mietstaffel) — der jeweils jüngste Eintrag,
+// dessen Datum bereits erreicht ist, gilt; ohne Staffel zählt die Ausgangsmiete.
+function aktuelleMietwerte(mieter, heute = new Date().toISOString().slice(0, 10)) {
+  const staffel = (mieter.mietstaffel || [])
+    .filter(s => s.datum && s.datum <= heute)
+    .sort((a, b) => b.datum.localeCompare(a.datum))
+  const aktuell = staffel[0]
+  return {
+    kaltmiete: aktuell ? +aktuell.kaltmiete || 0 : +mieter.kaltmiete || 0,
+    nebenkosten: aktuell ? +aktuell.nebenkosten || 0 : +mieter.nebenkosten || 0,
+    hatStaffel: (mieter.mietstaffel || []).length > 0,
+  }
+}
+
 // Annuität: monatliche Rate aus Darlehensbetrag, Zinssatz%, Tilgungssatz%
 function berechneAnnuitaet(betrag, zinsPct, tilgPct) {
   if (!betrag || !zinsPct) return null
@@ -413,6 +428,121 @@ function MieterFormular({ initial = LEER_MIETER, onSpeichern, onAbbrechen, titel
   )
 }
 
+// ─── Mietentwicklung (Staffelmiete / Mieterhöhungen) ──────────────────────────
+const LEER_STAFFEL = { id: null, datum: '', kaltmiete: '', nebenkosten: '' }
+
+function MietverlaufBlock({ mieter, onSpeichern }) {
+  const [formOffen, setFormOffen] = useState(false)
+  const [form, setForm] = useState(LEER_STAFFEL)
+  const [bearbId, setBearbId] = useState(null)
+
+  const staffel = mieter.mietstaffel || []
+  const verlauf = [
+    { datum: mieter.mietbeginn || '—', kaltmiete: +mieter.kaltmiete || 0, nebenkosten: +mieter.nebenkosten || 0, ausgang: true },
+    ...staffel,
+  ].filter(e => e.datum).sort((a, b) => a.datum.localeCompare(b.datum))
+
+  const chartDaten = verlauf.map(e => ({
+    datum: e.datum === '—' ? 'Start' : datumDE(e.datum),
+    Kaltmiete: +e.kaltmiete || 0,
+    Warmmiete: (+e.kaltmiete || 0) + (+e.nebenkosten || 0),
+  }))
+
+  function speichern() {
+    if (!form.datum || !form.kaltmiete) return
+    const eintrag = { ...form, kaltmiete: +form.kaltmiete, nebenkosten: +form.nebenkosten || 0, id: bearbId ?? Date.now().toString() }
+    const neu = bearbId ? staffel.map(s => s.id === bearbId ? eintrag : s) : [...staffel, eintrag]
+    onSpeichern(neu)
+    setForm(LEER_STAFFEL); setBearbId(null); setFormOffen(false)
+  }
+
+  function loeschen(id) { onSpeichern(staffel.filter(s => s.id !== id)) }
+
+  return (
+    <div className="border-t border-navy-100 pt-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-navy-500 uppercase tracking-widest">Mietentwicklung</p>
+        {!formOffen && (
+          <button onClick={() => { setBearbId(null); setForm(LEER_STAFFEL); setFormOffen(true) }}
+            className="text-xs text-brand-500 hover:text-brand-600 font-medium flex items-center gap-1">
+            <Plus size={13} /> Mieterhöhung
+          </button>
+        )}
+      </div>
+
+      {chartDaten.length > 1 && (
+        <ResponsiveContainer width="100%" height={140}>
+          <AreaChart data={chartDaten} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={`gradMiete${mieter.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#2e6b52" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#2e6b52" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2eaf3" />
+            <XAxis dataKey="datum" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} width={36} tickFormatter={v => `${v}€`} />
+            <Tooltip formatter={v => euro(v)} />
+            <Area type="stepAfter" dataKey="Kaltmiete" stroke="#2e6b52" strokeWidth={2} fill={`url(#gradMiete${mieter.id})`} />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+
+      {formOffen && (
+        <div className="rounded-xl p-3 space-y-3" style={{ background: '#faf8f4', border: '1px solid #e8dece' }}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Gültig ab</label>
+              <input className="input" type="date" value={form.datum} onChange={e => setForm({ ...form, datum: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Neue Kaltmiete (€)</label>
+              <input className="input" type="number" value={form.kaltmiete} onChange={e => setForm({ ...form, kaltmiete: e.target.value })} placeholder="0" />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Neue Nebenkosten (€) <span className="text-navy-400 font-normal normal-case">optional, sonst bleibt der bisherige Wert</span></label>
+              <input className="input" type="number" value={form.nebenkosten} onChange={e => setForm({ ...form, nebenkosten: e.target.value })} placeholder="0" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={speichern}><Check size={14} /> Speichern</button>
+            <button className="btn-secondary" onClick={() => { setFormOffen(false); setBearbId(null) }}><X size={14} /> Abbrechen</button>
+          </div>
+        </div>
+      )}
+
+      {verlauf.length > 1 && (
+        <div className="space-y-1.5">
+          {verlauf.map((e, i) => {
+            const vorher = verlauf[i - 1]
+            const delta = vorher ? (+e.kaltmiete || 0) - (+vorher.kaltmiete || 0) : 0
+            return (
+              <div key={e.id ?? 'start'} className="flex items-center justify-between text-sm px-1">
+                <span className="text-navy-500">{e.ausgang ? 'Einzug' : 'ab'} {e.datum !== '—' ? datumDE(e.datum) : ''}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-navy-700">{euro(e.kaltmiete)}/Mo.</span>
+                  {i > 0 && delta !== 0 && (
+                    <span className={`text-xs font-semibold ${delta > 0 ? 'text-brand-600' : 'text-red-500'}`}>
+                      {delta > 0 ? '+' : ''}{euro(delta)}
+                    </span>
+                  )}
+                  {!e.ausgang && (
+                    <div className="flex gap-1">
+                      <button onClick={() => { setForm({ ...e, kaltmiete: e.kaltmiete.toString(), nebenkosten: (e.nebenkosten || 0).toString() }); setBearbId(e.id); setFormOffen(true) }}
+                        className="p-1 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={12} /></button>
+                      <button onClick={() => loeschen(e.id)} className="p-1 text-red-400 hover:text-red-600 rounded"><Trash2 size={12} /></button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MieterTab({ immobilie, onSave }) {
   const mieterListe = immobilie.mieter || []
   const [formOffen, setFormOffen] = useState(false)
@@ -442,6 +572,10 @@ function MieterTab({ immobilie, onSave }) {
     setFormOffen(true)
   }
 
+  function staffelSpeichern(mieterId, neueStaffel) {
+    onSave({ ...immobilie, mieter: mieterListe.map(m => m.id === mieterId ? { ...m, mietstaffel: neueStaffel } : m) })
+  }
+
   const bearbeiteteMieter = bearbeitungId ? mieterListe.find(m => m.id === bearbeitungId) : null
 
   return (
@@ -455,7 +589,9 @@ function MieterTab({ immobilie, onSave }) {
         </div>
       )}
 
-      {aktive.map(m => (
+      {aktive.map(m => {
+        const aktuell = aktuelleMietwerte(m)
+        return (
         <div key={m.id} className="card space-y-4" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -477,17 +613,17 @@ function MieterTab({ immobilie, onSave }) {
           {/* Mietdaten */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="card bg-white">
-              <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaltmiete</p>
-              <p className="text-base font-bold text-brand-600">{euro(m.kaltmiete)}/Mo.</p>
+              <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaltmiete {aktuell.hatStaffel && <span className="text-brand-500">· aktuell</span>}</p>
+              <p className="text-base font-bold text-brand-600">{euro(aktuell.kaltmiete)}/Mo.</p>
             </div>
             <div className="card bg-white">
               <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Nebenkosten</p>
-              <p className="text-base font-bold text-navy-700">{euro(m.nebenkosten)}/Mo.</p>
+              <p className="text-base font-bold text-navy-700">{euro(aktuell.nebenkosten)}/Mo.</p>
             </div>
-            {(m.kaltmiete || m.nebenkosten) && (
+            {(aktuell.kaltmiete || aktuell.nebenkosten) && (
               <div className="card col-span-2 sm:col-span-1" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
                 <p className="label mb-1">Warmmiete</p>
-                <p className="text-base font-bold text-brand-600">{euro((+m.kaltmiete || 0) + (+m.nebenkosten || 0))}/Mo.</p>
+                <p className="text-base font-bold text-brand-600">{euro(aktuell.kaltmiete + aktuell.nebenkosten)}/Mo.</p>
               </div>
             )}
             {m.kaution && (
@@ -518,8 +654,11 @@ function MieterTab({ immobilie, onSave }) {
                 className="text-brand-500 hover:text-brand-600 text-xs font-medium shrink-0">Öffnen</button>
             </div>
           )}
+
+          <MietverlaufBlock mieter={m} onSpeichern={neueStaffel => staffelSpeichern(m.id, neueStaffel)} />
         </div>
-      ))}
+        )
+      })}
 
       {/* Formular */}
       {formOffen && (
@@ -655,9 +794,10 @@ function FinanzierungTab({ immobilie, onSave }) {
     onSave({ ...immobilie, finanzierung: neuesFin })
   }
 
-  // Aktiver Mieter für Cashflow
+  // Aktiver Mieter für Cashflow — Kaltmiete inkl. evtl. Staffelmiete/Mieterhöhung
   const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
-  const warmmiete = (+aktiverMieter?.kaltmiete || 0) + (+aktiverMieter?.nebenkosten || 0)
+  const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
+  const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
   const gesamtBelastung = monatlicheZinsen + monatlicheTilgung + (+(fin0.hausgeld || form.hausgeld) || 0)
   const cashflow = warmmiete - gesamtBelastung
   const hatCashflow = warmmiete > 0 || gesamtBelastung > 0
@@ -677,12 +817,12 @@ function FinanzierungTab({ immobilie, onSave }) {
                   <>
                     <div className="flex justify-between">
                       <span className="text-navy-400">Kaltmiete</span>
-                      <span className="text-brand-600 font-medium">+ {euro(aktiverMieter?.kaltmiete || 0)}</span>
+                      <span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte?.kaltmiete || 0)}</span>
                     </div>
-                    {aktiverMieter?.nebenkosten > 0 && (
+                    {aktiveMietwerte?.nebenkosten > 0 && (
                       <div className="flex justify-between">
                         <span className="text-navy-400">Nebenkosten</span>
-                        <span className="text-brand-600 font-medium">+ {euro(aktiverMieter.nebenkosten)}</span>
+                        <span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte.nebenkosten)}</span>
                       </div>
                     )}
                   </>
@@ -1663,7 +1803,8 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
     ? (+fin.darlehensbetrag * +fin.zinssatz / 100 / 12) : (+fin.zinsen || 0)
   const monatlicheTilgung = fin.modus === 'annuitaet' && fin._annRate
     ? fin._annRate - monatlicheZinsen : (+fin.tilgung || 0)
-  const warmmiete = (+aktiverMieter?.kaltmiete || 0) + (+aktiverMieter?.nebenkosten || 0)
+  const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
+  const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
   const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - (+fin.hausgeld || 0)
   const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
 
@@ -1799,7 +1940,8 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
             const fin = immo.finanzierung || {}
             const monatlicheZinsen = fin.modus === 'annuitaet' && fin.darlehensbetrag && fin.zinssatz
               ? (+fin.darlehensbetrag * +fin.zinssatz / 100 / 12) : (+fin.zinsen || 0)
-            const warmmiete = (+aktiverMieter?.kaltmiete || 0) + (+aktiverMieter?.nebenkosten || 0)
+            const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
+            const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
             const monatlicheTilgung = fin.modus === 'annuitaet' && fin._annRate
               ? fin._annRate - monatlicheZinsen : (+fin.tilgung || 0)
             const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - (+fin.hausgeld || 0)
@@ -1828,11 +1970,11 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
                 </div>
                 {hatCashflow && (
                   <div className="flex items-center justify-between border-t border-navy-50 pt-3 mt-3">
-                    {aktiverMieter?.kaltmiete && (
+                    {aktiveMietwerte?.kaltmiete > 0 && (
                       <div className="text-xs">
                         <span className="text-navy-400">Kalt </span>
-                        <span className="text-brand-600 font-semibold">{euro(aktiverMieter.kaltmiete)}</span>
-                        {aktiverMieter?.nebenkosten > 0 && <span className="text-navy-400 ml-1">+ NK {euro(aktiverMieter.nebenkosten)}</span>}
+                        <span className="text-brand-600 font-semibold">{euro(aktiveMietwerte.kaltmiete)}</span>
+                        {aktiveMietwerte?.nebenkosten > 0 && <span className="text-navy-400 ml-1">+ NK {euro(aktiveMietwerte.nebenkosten)}</span>}
                       </div>
                     )}
                     {cashflow !== 0 && (
