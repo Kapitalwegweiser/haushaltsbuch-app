@@ -117,10 +117,10 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
         <table className="w-full text-sm table-fixed">
           <colgroup>
             <col />
-            <col style={{ width: '90px' }} />
+            <col style={{ width: '108px' }} />
             <col style={{ width: '150px' }} className="hidden sm:table-column" />
             <col style={{ width: '110px' }} className="hidden sm:table-column" />
-            <col style={{ width: '64px' }} />
+            <col style={{ width: '56px' }} />
           </colgroup>
           <tbody>
             {eintraege.map(f => (
@@ -129,15 +129,15 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
                   <p className="font-medium text-navy-700 text-sm break-words" style={{ overflowWrap: 'break-word' }}>{f.name}</p>
                   <p className="text-xs text-navy-400 break-words" style={{ overflowWrap: 'break-word' }}>{f.kategorie}</p>
                 </td>
-                <td className="px-4 py-3 text-right text-navy-700 text-sm font-semibold">{euro(f.betrag)}</td>
+                <td className="pl-1 pr-3 py-3 text-right text-navy-700 text-sm font-semibold whitespace-nowrap">{euro(f.betrag)}</td>
                 <td className="px-4 py-3 hidden sm:table-cell">
                   <IntervallBadge intervall={f.intervall} abbuchungsmonat={f.abbuchungsmonat} />
                 </td>
                 <td className="px-4 py-3 text-right text-xs text-navy-500 hidden sm:table-cell">{euro(monatlicherBetrag(f.betrag, f.intervall))}/Mo.</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-end">
-                    <button onClick={() => bearbeiten(f)} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={14} /></button>
-                    <button onClick={() => loeschen(f.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded"><Trash2 size={14} /></button>
+                <td className="pl-0 pr-2 py-3">
+                  <div className="flex gap-0.5 justify-end">
+                    <button onClick={() => bearbeiten(f)} className="p-1 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={13} /></button>
+                    <button onClick={() => loeschen(f.id)} className="p-1 text-red-400 hover:text-red-600 rounded"><Trash2 size={13} /></button>
                   </div>
                 </td>
               </tr>
