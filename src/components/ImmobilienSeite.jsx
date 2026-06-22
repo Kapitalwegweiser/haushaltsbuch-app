@@ -1969,22 +1969,37 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
                   {immo.kaufpreis && <div className="flex items-center gap-1 text-navy-600 ml-auto"><Euro size={12} className="text-navy-400" /><span className="font-medium text-xs">{Number(immo.kaufpreis).toLocaleString('de-DE')}</span></div>}
                 </div>
                 {hatCashflow && (
-                  <div className="flex items-center justify-between border-t border-navy-50 pt-3 mt-3">
-                    {aktiveMietwerte?.kaltmiete > 0 && (
-                      <div className="text-xs">
-                        <span className="text-navy-400">Kalt </span>
-                        <span className="text-brand-600 font-semibold">{euro(aktiveMietwerte.kaltmiete)}</span>
-                        {aktiveMietwerte?.nebenkosten > 0 && <span className="text-navy-400 ml-1">+ NK {euro(aktiveMietwerte.nebenkosten)}</span>}
+                  <div className="border-t border-navy-50 pt-3 mt-3 space-y-1">
+                    {warmmiete > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-navy-400">Warmmiete</span>
+                        <span className="text-brand-600 font-medium">+ {euro(warmmiete)}</span>
                       </div>
                     )}
-                    {cashflow !== 0 && (
-                      <div className="text-xs ml-auto">
-                        <span className="text-navy-400">CF </span>
-                        <span className={`font-bold ${cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}`}>
-                          {cashflow >= 0 ? '+' : ''}{euro(cashflow)}
-                        </span>
+                    {monatlicheZinsen > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-navy-400">Zinsen</span>
+                        <span className="text-red-500">− {euro(monatlicheZinsen)}</span>
                       </div>
                     )}
+                    {monatlicheTilgung > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-navy-400">Tilgung</span>
+                        <span className="text-red-500">− {euro(monatlicheTilgung)}</span>
+                      </div>
+                    )}
+                    {+fin.hausgeld > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-navy-400">Hausgeld</span>
+                        <span className="text-red-500">− {euro(+fin.hausgeld)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs pt-1 border-t border-navy-50 font-semibold">
+                      <span className="text-navy-600">Cashflow / Mo.</span>
+                      <span className={cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}>
+                        {cashflow >= 0 ? '+' : ''}{euro(cashflow)}
+                      </span>
+                    </div>
                   </div>
                 )}
               </button>
