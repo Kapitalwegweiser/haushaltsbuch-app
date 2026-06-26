@@ -4,16 +4,27 @@ import { supabase, trackWrite, reportSyncError } from '../lib/supabase'
 // Speichert komplexe Objekte (mit Arrays, verschachtelten Daten) als JSONB in Supabase
 // Tabellen-Schema: { id text PK, user_id uuid, data jsonb }
 
+// Dokumente werden seit der Umstellung auf Supabase Storage als leichte
+// Referenz { name, pfad, typ } gehalten — die bleiben unverändert in der Cloud.
+// Nur echte File-Objekte (sollten nicht mehr vorkommen) oder alte Base64-Reste
+// werden vor dem Sync entfernt/auf Metadaten reduziert.
+function cleanDokument(d) {
+  if (!d) return d
+  if (d instanceof File) return null
+  if (d.pfad) return d
+  if (d.data) return { name: d.name, typ: d.typ }
+  return d
+}
+
 function stripFiles(item) {
-  // Datei-Objekte (base64) nicht in die Cloud — nur Metadaten behalten
   const clean = { ...item }
-  if (clean.police?.data) clean.police = { name: clean.police.name, typ: clean.police.typ }
-  if (clean.mieter)       clean.mieter       = (clean.mieter       || []).map(m => ({ ...m, dokument: m.dokument instanceof File ? { _fileName: m.dokument.name } : (m.dokument?._fileName ? m.dokument : null) }))
-  if (clean.instandhaltung) clean.instandhaltung = (clean.instandhaltung || []).map(i => ({ ...i, dokument: i.dokument instanceof File ? { _fileName: i.dokument.name } : (i.dokument?._fileName ? i.dokument : null) }))
-  if (clean.dokumente)    clean.dokumente    = (clean.dokumente    || []).map(d => ({ ...d, datei: d.datei instanceof File ? { _fileName: d.datei.name } : (d.datei?._fileName ? d.datei : null) }))
-  if (clean.wirtschaftsplaene) clean.wirtschaftsplaene = (clean.wirtschaftsplaene || []).map(w => ({ ...w, dokument: w.dokument instanceof File ? { _fileName: w.dokument.name } : (w.dokument?._fileName ? w.dokument : null) }))
-  if (clean.steuern)      clean.steuern      = (clean.steuern      || []).map(s => ({ ...s, dokument: s.dokument instanceof File ? { _fileName: s.dokument.name } : (s.dokument?._fileName ? s.dokument : null) }))
-  if (clean.eigentuemerversammlungen) clean.eigentuemerversammlungen = (clean.eigentuemerversammlungen || []).map(p => ({ ...p, dokument: p.dokument instanceof File ? { _fileName: p.dokument.name } : (p.dokument?._fileName ? p.dokument : null) }))
+  if (clean.police)      clean.police       = cleanDokument(clean.police)
+  if (clean.mieter)       clean.mieter       = (clean.mieter       || []).map(m => ({ ...m, dokument: cleanDokument(m.dokument) }))
+  if (clean.instandhaltung) clean.instandhaltung = (clean.instandhaltung || []).map(i => ({ ...i, dokument: cleanDokument(i.dokument) }))
+  if (clean.dokumente)    clean.dokumente    = (clean.dokumente    || []).map(d => ({ ...d, datei: cleanDokument(d.datei) }))
+  if (clean.wirtschaftsplaene) clean.wirtschaftsplaene = (clean.wirtschaftsplaene || []).map(w => ({ ...w, dokument: cleanDokument(w.dokument) }))
+  if (clean.steuern)      clean.steuern      = (clean.steuern      || []).map(s => ({ ...s, dokument: cleanDokument(s.dokument) }))
+  if (clean.eigentuemerversammlungen) clean.eigentuemerversammlungen = (clean.eigentuemerversammlungen || []).map(p => ({ ...p, dokument: cleanDokument(p.dokument) }))
   return clean
 }
 

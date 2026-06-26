@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend
 } from 'recharts'
+import { hochladenDatei, oeffneDatei, loescheDatei } from '../lib/storage'
 
 // ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
 function euro(n) {
@@ -268,8 +269,32 @@ function KaufdatumInput({ value, onChange }) {
 }
 
 // ─── Datei-Upload ─────────────────────────────────────────────────────────────
+// Lädt direkt in den privaten Supabase-Storage-Bereich des Nutzers hoch, statt
+// die Datei nur lokal im Browser zu halten — so bleibt sie geräteübergreifend
+// abrufbar, auch nach Logout/Login oder auf einem anderen Gerät.
 function DokumentUpload({ dokument, onChange, label = 'Dokument hochladen' }) {
   const ref = useRef()
+  const [hochladen, setHochladen] = useState(false)
+  const [fehler, setFehler] = useState('')
+
+  async function dateiGewaehlt(file) {
+    if (!file) return
+    setFehler(''); setHochladen(true)
+    try {
+      const meta = await hochladenDatei(file)
+      onChange(meta)
+    } catch (err) {
+      setFehler('Hochladen fehlgeschlagen: ' + (err.message || err))
+    } finally {
+      setHochladen(false)
+    }
+  }
+
+  async function entfernen() {
+    if (dokument?.pfad) await loescheDatei(dokument.pfad)
+    onChange(null)
+  }
+
   return (
     <div>
       <p className="label mb-1">{label}</p>
@@ -278,23 +303,25 @@ function DokumentUpload({ dokument, onChange, label = 'Dokument hochladen' }) {
           <FileText size={15} className="text-brand-500 shrink-0" />
           <span className="flex-1 truncate text-navy-700 font-medium">{dokument.name}</span>
           <button
-            onClick={() => { const url = URL.createObjectURL(dokument); window.open(url) }}
+            onClick={() => oeffneDatei(dokument.pfad)}
             className="text-brand-500 hover:text-brand-600 text-xs font-medium shrink-0 mr-2"
           >Öffnen</button>
-          <button onClick={() => onChange(null)} className="text-red-400 hover:text-red-600 shrink-0"><X size={14} /></button>
+          <button onClick={entfernen} className="text-red-400 hover:text-red-600 shrink-0"><X size={14} /></button>
         </div>
       ) : (
         <button
           type="button"
+          disabled={hochladen}
           onClick={() => ref.current.click()}
-          className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-navy-200 rounded-xl text-sm text-navy-500 hover:border-brand-400 hover:text-brand-600 transition-colors w-full"
+          className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-navy-200 rounded-xl text-sm text-navy-500 hover:border-brand-400 hover:text-brand-600 transition-colors w-full disabled:opacity-60"
         >
-          <Upload size={15} /><span>PDF oder Bild auswählen</span>
+          <Upload size={15} /><span>{hochladen ? 'Wird hochgeladen…' : 'PDF oder Bild auswählen'}</span>
         </button>
       )}
       <input ref={ref} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-        onChange={e => { if (e.target.files[0]) onChange(e.target.files[0]); e.target.value = '' }} />
-      {!dokument && <p className="text-xs text-navy-400 mt-1">Wird lokal gespeichert (max. 10 MB)</p>}
+        onChange={e => { if (e.target.files[0]) dateiGewaehlt(e.target.files[0]); e.target.value = '' }} />
+      {!dokument && !fehler && <p className="text-xs text-navy-400 mt-1">Wird sicher in der Cloud gespeichert (max. 10 MB)</p>}
+      {fehler && <p className="text-xs text-red-500 mt-1">{fehler}</p>}
     </div>
   )
 }
@@ -650,7 +677,7 @@ function MieterTab({ immobilie, onSave }) {
             <div className="flex items-center gap-2 p-2.5 bg-white border border-emerald-200 rounded-xl text-sm">
               <FileText size={15} className="text-brand-500 shrink-0" />
               <span className="flex-1 truncate text-navy-700 font-medium">{m.dokument.name}</span>
-              <button onClick={() => { const url = URL.createObjectURL(m.dokument); window.open(url) }}
+              <button onClick={() => oeffneDatei(m.dokument.pfad)}
                 className="text-brand-500 hover:text-brand-600 text-xs font-medium shrink-0">Öffnen</button>
             </div>
           )}
@@ -717,7 +744,7 @@ function MieterTab({ immobilie, onSave }) {
                     )}
                   </div>
                   {m.dokument && (
-                    <button onClick={() => { const url = URL.createObjectURL(m.dokument); window.open(url) }}
+                    <button onClick={() => oeffneDatei(m.dokument.pfad)}
                       className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600">
                       <FileText size={12} /> {m.dokument.name}
                     </button>
@@ -1135,14 +1162,14 @@ function InstandhaltungTab({ immobilie, onSave }) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs bg-navy-100 text-navy-600 px-2 py-0.5 rounded-full">{m.kategorie}</span>
-                          {m.dokument instanceof File && (
-                            <button onClick={() => { const url = URL.createObjectURL(m.dokument); window.open(url) }}
+                          {m.dokument?.pfad && (
+                            <button onClick={() => oeffneDatei(m.dokument.pfad)}
                               className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600">
                               <FileText size={12} /> Rechnung
                             </button>
                           )}
-                          {m.dokument && !(m.dokument instanceof File) && m.dokument._fileName && (
-                            <span className="flex items-center gap-1 text-xs text-navy-400"><FileText size={12} /> {m.dokument._fileName}</span>
+                          {m.dokument && !m.dokument.pfad && m.dokument._fileName && (
+                            <span className="flex items-center gap-1 text-xs text-navy-400"><FileText size={12} /> {m.dokument._fileName} (alte Version, nicht mehr verfügbar)</span>
                           )}
                         </div>
                         <p className="text-sm font-medium text-navy-700 mt-1">{m.beschreibung}</p>
@@ -1260,14 +1287,14 @@ function SteuernTab({ immobilie, onSave }) {
               <span className="text-sm font-semibold text-navy-700">{e.steuerjahr}</span>
               <div className="min-w-0">
                 <p className="text-sm text-navy-700">{e.beschreibung || '—'}</p>
-                {e.dokument instanceof File && (
-                  <button onClick={() => { const url = URL.createObjectURL(e.dokument); window.open(url) }}
+                {e.dokument?.pfad && (
+                  <button onClick={() => oeffneDatei(e.dokument.pfad)}
                     className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 mt-0.5">
                     <FileText size={11} /> {e.dokument.name}
                   </button>
                 )}
-                {e.dokument && !(e.dokument instanceof File) && e.dokument._fileName && (
-                  <span className="flex items-center gap-1 text-xs text-navy-400 mt-0.5"><FileText size={11} /> {e.dokument._fileName}</span>
+                {e.dokument && !e.dokument.pfad && e.dokument._fileName && (
+                  <span className="flex items-center gap-1 text-xs text-navy-400 mt-0.5"><FileText size={11} /> {e.dokument._fileName} (alte Version, nicht mehr verfügbar)</span>
                 )}
               </div>
               <div className="text-right shrink-0">
@@ -1440,7 +1467,7 @@ function EigentuemerTab({ immobilie, onSave }) {
                               <div>
                                 <p className="text-xs text-navy-400 uppercase tracking-widest mb-2">Protokoll-Dokument</p>
                                 <button
-                                  onClick={() => { const url = URL.createObjectURL(p.dokument); window.open(url) }}
+                                  onClick={() => oeffneDatei(p.dokument.pfad)}
                                   className="flex items-center gap-2 p-2.5 bg-white border border-navy-200 rounded-xl text-sm hover:border-brand-400 transition-colors"
                                 >
                                   <FileText size={15} className="text-brand-500" />
@@ -1492,7 +1519,22 @@ function DokumenteTab({ immobilie, onSave }) {
   const dokumente = immobilie.dokumente || []
   const [form, setForm] = useState({ bezeichnung: '', kategorie: '', datei: null })
   const [formOffen, setFormOffen] = useState(false)
+  const [hochladen, setHochladen] = useState(false)
+  const [fehler, setFehler] = useState('')
   const fileRef = useRef(null)
+
+  async function dateiGewaehlt(file) {
+    if (!file) return
+    setFehler(''); setHochladen(true)
+    try {
+      const meta = await hochladenDatei(file)
+      setForm(f => ({ ...f, datei: meta, bezeichnung: f.bezeichnung || meta.name.replace(/\.[^.]+$/, '') }))
+    } catch (err) {
+      setFehler('Hochladen fehlgeschlagen: ' + (err.message || err))
+    } finally {
+      setHochladen(false)
+    }
+  }
 
   function hinzufuegen() {
     if (!form.bezeichnung.trim() && !form.datei) return
@@ -1508,15 +1550,14 @@ function DokumenteTab({ immobilie, onSave }) {
     setFormOffen(false)
   }
 
-  function loeschen(id) {
+  async function loeschen(id) {
+    const dok = dokumente.find(d => d.id === id)
+    if (dok?.datei?.pfad) await loescheDatei(dok.datei.pfad)
     onSave({ ...immobilie, dokumente: dokumente.filter(d => d.id !== id) })
   }
 
   function oeffnen(dok) {
-    if (dok.datei instanceof File) {
-      const url = URL.createObjectURL(dok.datei)
-      window.open(url)
-    }
+    if (dok.datei?.pfad) oeffneDatei(dok.datei.pfad)
   }
 
   const nachKat = DOKUMENT_KATEGORIEN.filter(k => dokumente.some(d => d.kategorie === k))
@@ -1570,13 +1611,14 @@ function DokumenteTab({ immobilie, onSave }) {
             <div
               className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-6 cursor-pointer transition-colors hover:border-brand-400"
               style={{ borderColor: form.datei ? '#2e6b52' : '#d8ccba', background: form.datei ? '#edf7f2' : '#faf8f4' }}
-              onClick={() => fileRef.current?.click()}
+              onClick={() => !hochladen && fileRef.current?.click()}
             >
-              {form.datei ? (
+              {hochladen ? (
+                <p className="text-sm text-navy-500">Wird hochgeladen…</p>
+              ) : form.datei ? (
                 <>
                   <FileText size={22} className="text-brand-500 mb-1.5" />
                   <p className="text-sm font-medium text-brand-700">{form.datei.name}</p>
-                  <p className="text-xs text-navy-400 mt-0.5">{(form.datei.size / 1024).toFixed(0)} KB</p>
                 </>
               ) : (
                 <>
@@ -1587,10 +1629,11 @@ function DokumenteTab({ immobilie, onSave }) {
               )}
             </div>
             <input ref={fileRef} type="file" className="hidden"
-              onChange={e => { if (e.target.files[0]) setForm({ ...form, datei: e.target.files[0], bezeichnung: form.bezeichnung || e.target.files[0].name.replace(/\.[^.]+$/, '') }) }} />
+              onChange={e => { if (e.target.files[0]) dateiGewaehlt(e.target.files[0]); e.target.value = '' }} />
+            {fehler && <p className="text-xs text-red-500 mt-1">{fehler}</p>}
           </div>
           <div className="flex gap-2">
-            <button className="btn-primary" onClick={hinzufuegen} disabled={!form.bezeichnung.trim() && !form.datei}>
+            <button className="btn-primary" onClick={hinzufuegen} disabled={hochladen || (!form.bezeichnung.trim() && !form.datei)}>
               <Check size={14} /> Speichern
             </button>
             <button className="btn-secondary" onClick={() => { setForm({ bezeichnung: '', kategorie: '', datei: null }); setFormOffen(false) }}>
@@ -1622,15 +1665,15 @@ function DokumenteTab({ immobilie, onSave }) {
                   <p className="text-xs text-navy-400">{dok.datum}</p>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  {dok.datei instanceof File && (
+                  {dok.datei?.pfad && (
                     <button onClick={() => oeffnen(dok)}
                       className="p-1.5 text-brand-500 hover:text-brand-600 rounded" title="Öffnen">
                       <Download size={14} />
                     </button>
                   )}
-                  {dok.datei && !(dok.datei instanceof File) && dok.datei._fileName && (
+                  {dok.datei && !dok.datei.pfad && dok.datei._fileName && (
                     <span className="text-xs text-navy-400 flex items-center gap-1 px-1.5">
-                      <FileText size={11} /> {dok.datei._fileName}
+                      <FileText size={11} /> {dok.datei._fileName} (alte Version, nicht mehr verfügbar)
                     </span>
                   )}
                   <button onClick={() => loeschen(dok.id)}
@@ -1756,14 +1799,14 @@ function WirtschaftsplaeneTab({ immobilie, onSave }) {
                   <span className="text-xs text-navy-400">{e.jahr}</span>
                 </div>
                 <p className="text-sm font-medium text-navy-700 mt-1">{e.beschreibung || '—'}</p>
-                {e.dokument instanceof File && (
-                  <button onClick={() => { const url = URL.createObjectURL(e.dokument); window.open(url) }}
+                {e.dokument?.pfad && (
+                  <button onClick={() => oeffneDatei(e.dokument.pfad)}
                     className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 mt-1">
                     <FileText size={12} /> {e.dokument.name}
                   </button>
                 )}
-                {e.dokument && !(e.dokument instanceof File) && e.dokument._fileName && (
-                  <span className="flex items-center gap-1 text-xs text-navy-400 mt-1"><FileText size={11} /> {e.dokument._fileName}</span>
+                {e.dokument && !e.dokument.pfad && e.dokument._fileName && (
+                  <span className="flex items-center gap-1 text-xs text-navy-400 mt-1"><FileText size={11} /> {e.dokument._fileName} (alte Version, nicht mehr verfügbar)</span>
                 )}
               </div>
               <div className="text-right shrink-0">

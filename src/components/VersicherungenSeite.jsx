@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText,
          ChevronDown, ChevronUp, Trash2, Upload, ExternalLink,
          AlertTriangle, Info } from 'lucide-react'
+import { hochladenDatei, oeffneDatei, loescheDatei } from '../lib/storage'
 
 const KATEGORIEN = [
   { id: 'kranken',      label: 'Krankenversicherung',    gruppe: 'Personenversicherungen', icon: Heart,    farbe: '#2e6b52', bg: '#edf7f2' },
@@ -172,6 +173,8 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   const [form, setForm]               = useState(LEER)
   const [aufgeklappt, setAufgeklappt] = useState(null)
   const [dragOver, setDragOver]       = useState(false)
+  const [hochladen, setHochladen]     = useState(false)
+  const [uploadFehler, setUploadFehler] = useState('')
   const fileRef = useRef()
 
   const gesamtJahr  = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
@@ -190,11 +193,22 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   function oeffneNeu() { setForm(LEER); setEditId(null); setFormOffen(true) }
   function oeffneEdit(v) { setForm({ ...LEER, ...v }); setEditId(v.id); setFormOffen(true) }
 
-  function handleDatei(file) {
+  async function handleDatei(file) {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = e => setForm(f => ({ ...f, police: { name: file.name, typ: file.type, data: e.target.result } }))
-    reader.readAsDataURL(file)
+    setUploadFehler(''); setHochladen(true)
+    try {
+      const meta = await hochladenDatei(file)
+      setForm(f => ({ ...f, police: meta }))
+    } catch (err) {
+      setUploadFehler('Hochladen fehlgeschlagen: ' + (err.message || err))
+    } finally {
+      setHochladen(false)
+    }
+  }
+
+  async function policeEntfernen() {
+    if (form.police?.pfad) await loescheDatei(form.police.pfad)
+    setForm(f => ({ ...f, police: null }))
   }
 
   function speichern() {
@@ -208,11 +222,6 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   }
 
   function loeschen(id) { setVersicherungen(vs => vs.filter(v => v.id !== id)); setAufgeklappt(null) }
-
-  function oeffnePolice(police) {
-    const a = document.createElement('a')
-    a.href = police.data; a.download = police.name; a.click()
-  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -348,11 +357,11 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                             <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
                               <FileText size={14} style={{ color: '#2e6b52' }} />
                               <span className="text-sm text-navy-700 flex-1 truncate">{v.police.name}</span>
-                              <button onClick={() => oeffnePolice(v.police)}
+                              <button onClick={() => oeffneDatei(v.police.pfad)}
                                 className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: '#2e6b52' }}>
                                 <ExternalLink size={12} /> Öffnen
                               </button>
-                              <button onClick={() => setVersicherungen(vs => vs.map(x => x.id === v.id ? { ...x, police: null } : x))}
+                              <button onClick={async () => { if (v.police?.pfad) await loescheDatei(v.police.pfad); setVersicherungen(vs => vs.map(x => x.id === v.id ? { ...x, police: null } : x)) }}
                                 className="text-navy-400 hover:text-red-500 ml-1"><X size={14} /></button>
                             </div>
                           ) : (
@@ -511,7 +520,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                   <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
                     <FileText size={15} style={{ color: '#2e6b52' }} />
                     <span className="text-sm text-navy-700 flex-1 truncate">{form.police.name}</span>
-                    <button type="button" onClick={() => setForm(f => ({ ...f, police: null }))} className="text-navy-400 hover:text-red-500">
+                    <button type="button" onClick={policeEntfernen} className="text-navy-400 hover:text-red-500">
                       <X size={15} />
                     </button>
                   </div>
@@ -519,17 +528,20 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                   <div
                     className="rounded-xl flex flex-col items-center justify-center gap-2 py-6 cursor-pointer transition-colors"
                     style={{ border: `2px dashed ${dragOver ? '#2e6b52' : '#d8ccb8'}`, background: dragOver ? '#edf7f2' : '#faf8f4' }}
-                    onClick={() => fileRef.current.click()}
+                    onClick={() => !hochladen && fileRef.current.click()}
                     onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={e => { e.preventDefault(); setDragOver(false); handleDatei(e.dataTransfer.files[0]) }}
                   >
                     <Upload size={20} className="text-navy-400" />
-                    <p className="text-sm text-navy-400">Datei hier ablegen oder <span className="text-navy-600 underline">auswählen</span></p>
+                    <p className="text-sm text-navy-400">
+                      {hochladen ? 'Wird hochgeladen…' : <>Datei hier ablegen oder <span className="text-navy-600 underline">auswählen</span></>}
+                    </p>
                     <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                      onChange={e => handleDatei(e.target.files[0])} />
+                      onChange={e => { handleDatei(e.target.files[0]); e.target.value = '' }} />
                   </div>
                 )}
+                {uploadFehler && <p className="text-xs text-red-500 mt-1">{uploadFehler}</p>}
               </div>
 
               <div>
