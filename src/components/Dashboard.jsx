@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { monatlicherBetrag, monatlicheEinnahme, MONATE } from '../data/kategorien'
-import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle, Tv, Users } from 'lucide-react'
+import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle } from 'lucide-react'
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
@@ -17,36 +17,18 @@ function jahresbetragTracker(v) {
 }
 function monatsbetragTracker(v) { return jahresbetragTracker(v) / 12 }
 
-function TrackerListe({ titel, items, farbe, icon: Icon }) {
-  if (items.length === 0) return null
-  const summe = items.reduce((s, v) => s + monatsbetragTracker(v), 0)
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-serif font-semibold text-navy-700 flex items-center gap-2">
-          <Icon size={16} style={{ color: farbe }} /> {titel}
-        </h3>
-        <span className="text-sm font-bold" style={{ color: farbe }}>{euro(summe)} / Mo.</span>
-      </div>
-      <div className="space-y-1.5">
-        {items.map(v => (
-          <div key={v.id} className="flex justify-between text-sm">
-            <span className="text-navy-600 truncate max-w-[60%]">{v.name}</span>
-            <span className="text-navy-500">{euro(monatsbetragTracker(v))} / Mo.</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AusgabenListe({ fixkosten }) {
+function AusgabenListe({ fixkosten, abos = [], vereine = [] }) {
   const [ausgeklappt, setAusgeklappt] = useState(false)
   const nachKat = {}
   fixkosten.forEach(f => {
     const key = f.kategorie || 'Sonstiges'
     nachKat[key] = (nachKat[key] || 0) + monatlicherBetrag(f.betrag, f.intervall)
   })
+  const abosSumme = abos.reduce((s, v) => s + monatsbetragTracker(v), 0)
+  if (abosSumme > 0) nachKat['Abos'] = (nachKat['Abos'] || 0) + abosSumme
+  const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
+  if (vereineSumme > 0) nachKat['Vereine'] = (nachKat['Vereine'] || 0) + vereineSumme
+
   const gesamt = Object.values(nachKat).reduce((s, v) => s + v, 0)
   const sortiert = Object.entries(nachKat)
     .map(([name, value]) => ({ name, value }))
@@ -260,15 +242,12 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
             </ResponsiveContainer>
           </div>
 
-          {fixkosten.length > 0 && (
+          {(fixkosten.length > 0 || abos.length > 0 || vereine.length > 0) && (
             <div className="card">
               <h3 className="font-serif font-semibold text-navy-700 mb-4">Ausgaben nach Kategorie</h3>
-              <AusgabenListe fixkosten={fixkosten} />
+              <AusgabenListe fixkosten={fixkosten} abos={abos} vereine={vereine} />
             </div>
           )}
-
-          <TrackerListe titel="Abos" items={abos} farbe="#5b4fa8" icon={Tv} />
-          <TrackerListe titel="Vereine" items={vereine} farbe="#1a7ea8" icon={Users} />
         </div>
       )}
     </div>
