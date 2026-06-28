@@ -9,8 +9,19 @@ import './index.css'
 // ohne manuelles Schließen/Wiederöffnen der installierten PWA ankommen.
 // Wichtig: erst warten, bis alle offenen Speichervorgänge durch sind — sonst reißt
 // der Reload eine gerade laufende Ausgabe/Eingabe mitten im Speichern ab.
-registerSW({
+const updateSW = registerSW({
   immediate: true,
+  onRegisteredSW(swUrl, registration) {
+    // Der Browser prüft sonst nur beim Laden der Seite auf Updates — bei einer
+    // dauerhaft offenen App/Tab würde ein neues Deployment sonst erst nach einem
+    // kompletten Schließen/Neuöffnen ankommen. Deshalb zusätzlich regelmäßig
+    // selbst nachfragen, auch während die Seite geöffnet bleibt.
+    if (!registration) return
+    setInterval(() => { registration.update() }, 15 * 60 * 1000)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registration.update()
+    })
+  },
   async onNeedRefresh() {
     await flushPendingWrites()
     window.location.reload()
