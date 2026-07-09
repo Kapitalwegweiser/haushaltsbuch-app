@@ -11,6 +11,10 @@ export default function LoginSeite() {
   const [laden, setLaden] = useState(false)
   const [fehler, setFehler] = useState('')
 
+  // Referral-Code aus URL lesen und für spätere Verarbeitung nach Login speichern
+  const refCode = new URLSearchParams(window.location.search).get('ref')
+  if (refCode) localStorage.setItem('kw_referral', refCode)
+
   function reset() { setFehler('') }
 
   async function handleLogin(e) {
@@ -109,7 +113,14 @@ export default function LoginSeite() {
           {modus === 'register' && (
             <>
               <h2 className="text-xl font-bold text-navy-800 mb-1">Konto erstellen</h2>
-              <p className="text-navy-500 text-sm mb-5">Kostenlos — deine Daten gehören nur dir.</p>
+              {refCode ? (
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2 mb-4 text-sm" style={{ background: '#edf7f2', borderLeft: '3px solid #2e6b52' }}>
+                  <CheckCircle size={15} style={{ color: '#2e6b52', flexShrink: 0 }} />
+                  <p className="text-navy-700"><strong>Du wurdest eingeladen!</strong> Du erhältst 10% Rabatt auf dein erstes Coaching-Paket.</p>
+                </div>
+              ) : (
+                <p className="text-navy-500 text-sm mb-5">Kostenlos — deine Daten gehören nur dir.</p>
+              )}
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
                   <label className="label">Dein Name <span className="text-navy-400 font-normal">(optional)</span></label>

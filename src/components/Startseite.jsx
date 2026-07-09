@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Wallet, Shield, Tv, Users } from 'lucide-react'
+import { Building2, ChevronRight, Wallet, Shield, Tv, Users, Gift } from 'lucide-react'
 import { monatlicherBetrag, monatlicheEinnahme } from '../data/kategorien'
 
 function euro(n) {
@@ -190,6 +190,29 @@ export default function Startseite({ user, einnahmen, fixkosten, immobilien = []
                   vereine.length > 0 ? 'bg-brand-500/10 text-brand-600' : 'bg-navy-100 text-navy-400'
                 }`}>
                   {vereine.length > 0 ? `${vereine.length} Verein${vereine.length !== 1 ? 'e' : ''}` : 'Noch nicht eingerichtet'}
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* Empfehlungen */}
+          <button
+            onClick={() => navigiere('empfehlungen')}
+            className="card text-left group transition-all duration-200 hover:shadow-md h-full"
+            style={{ borderColor: '#d8ccba' }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#b45309' }}>
+                <Gift size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-serif text-base font-semibold text-navy-700">Freunde werben</h3>
+                  <ChevronRight size={15} className="text-navy-300 group-hover:text-brand-500 transition-colors shrink-0" />
+                </div>
+                <p className="text-xs text-navy-400 leading-relaxed">Freunde einladen und 10% Provision auf gebuchte Coaching-Pakete erhalten</p>
+                <span className="inline-block mt-2.5 text-[10px] font-medium px-2 py-0.5 rounded-full tracking-wide bg-amber-100 text-amber-700">
+                  10% für dich · 10% für deinen Freund
                 </span>
               </div>
             </div>

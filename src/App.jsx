@@ -14,7 +14,9 @@ import FinanzScore from './components/FinanzScore'
 import Wachstumsprognose from './components/Wachstumsprognose'
 import VersicherungenSeite from './components/VersicherungenSeite'
 import TrackerSeite from './components/TrackerSeite'
+import EmpfehlungSeite from './components/EmpfehlungSeite'
 import { Tv, Users } from 'lucide-react'
+import { verarbeiteEinladung } from './hooks/useReferral'
 import Onboarding from './components/Onboarding'
 import AppTour from './components/AppTour'
 import LoginSeite from './components/LoginSeite'
@@ -37,10 +39,13 @@ function AppInner() {
   const [aktivesModul, setAktivesModul] = useState('startseite')
   const [aktiveSeite, setAktiveSeite]   = useState('dashboard')
 
-  // Bei Login immer zur Startseite
+  // Bei Login immer zur Startseite + Referral verarbeiten
   const vorigerUser = useRef(null)
   useEffect(() => {
-    if (user && !vorigerUser.current) setAktivesModul('startseite')
+    if (user && !vorigerUser.current) {
+      setAktivesModul('startseite')
+      verarbeiteEinladung(user.id, user.email)
+    }
     vorigerUser.current = user ?? null
   }, [user])
 
@@ -113,6 +118,8 @@ function AppInner() {
         return <TrackerSeite items={vereine} setItems={setVereine} titel="Vereine" ueberschrift="Meine Vereine"
           anbieterLabel="Verein" leerTitel="Noch keine Vereine" leerText="Füge deinen ersten Verein hinzu."
           farbe="#1a7ea8" bg="#e8f5fc" icon={Users} />
+      case 'empfehlungen':
+        return <EmpfehlungSeite user={user} />
       case 'profil':
         return <ProfilSeite user={user} abmelden={abmelden} meldetSichAb={meldetSichAb} />
       default:
