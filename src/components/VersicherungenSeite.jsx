@@ -192,9 +192,9 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   const [form, setForm]               = useState(LEER)
   const [aufgeklappt, setAufgeklappt] = useState(null)
   const [dragOver, setDragOver]       = useState(false)
-  const [hochladen, setHochladen]     = useState(false)
+  const [hochladen, setHochladen]       = useState(false)
   const [uploadFehler, setUploadFehler] = useState('')
-  const [analysiert, setAnalysiert]   = useState(false)
+  const [analyseLaeuft, setAnalyseLaeuft] = useState(false)
   const fileRef = useRef()
 
   const gesamtJahr  = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
@@ -215,24 +215,38 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
 
   async function handleDatei(file) {
     if (!file) return
-    setUploadFehler(''); setHochladen(true); setAnalysiert(false)
+    setUploadFehler(''); setHochladen(true)
     try {
       const meta = await hochladenDatei(file)
       setForm(f => ({ ...f, police: meta, zusammenfassung: null }))
-      // KI-Analyse nur für PDFs
-      if (meta.typ === 'application/pdf') {
-        try {
-          const zusammenfassung = await analysierePolice(meta.pfad)
-          setForm(f => ({ ...f, zusammenfassung }))
-          setAnalysiert(true)
-        } catch {
-          // Analyse-Fehler ist nicht kritisch — Police bleibt gespeichert
-        }
-      }
     } catch (err) {
       setUploadFehler('Hochladen fehlgeschlagen: ' + (err.message || err))
     } finally {
       setHochladen(false)
+    }
+  }
+
+  async function analyseStarten(pfad) {
+    setAnalyseLaeuft(true)
+    try {
+      const zusammenfassung = await analysierePolice(pfad)
+      setForm(f => ({ ...f, zusammenfassung }))
+    } catch {
+      // Fehler still ignorieren
+    } finally {
+      setAnalyseLaeuft(false)
+    }
+  }
+
+  async function analyseStartenKarte(v) {
+    setAnalyseLaeuft(true)
+    try {
+      const zusammenfassung = await analysierePolice(v.police.pfad)
+      setVersicherungen(vs => vs.map(x => x.id === v.id ? { ...x, zusammenfassung } : x))
+    } catch {
+      // Fehler still ignorieren
+    } finally {
+      setAnalyseLaeuft(false)
     }
   }
 
@@ -400,6 +414,16 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                         </div>
 
                         {/* KI-Zusammenfassung */}
+                        {v.police?.pfad && v.police?.typ === 'application/pdf' && !v.zusammenfassung && (
+                          <button
+                            onClick={() => analyseStartenKarte(v)}
+                            disabled={analyseLaeuft}
+                            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                            style={{ background: '#f0eeff', color: '#5b4fa8', border: '1px solid #c8c0f0' }}
+                          >
+                            {analyseLaeuft ? <><Loader2 size={12} className="animate-spin" /> Analysiere…</> : <><Sparkles size={12} /> Police von KI analysieren lassen</>}
+                          </button>
+                        )}
                         {v.zusammenfassung && (
                           <div className="rounded-xl px-3 py-2.5 space-y-1" style={{ background: '#f0eeff', border: '1px solid #c8c0f0' }}>
                             <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
@@ -564,17 +588,22 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                     <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
                       <FileText size={15} style={{ color: '#2e6b52' }} />
                       <span className="text-sm text-navy-700 flex-1 truncate">{form.police.name}</span>
-                      {hochladen && <Loader2 size={14} className="animate-spin text-navy-400" />}
                       <button type="button" onClick={policeEntfernen} className="text-navy-400 hover:text-red-500">
                         <X size={15} />
                       </button>
                     </div>
-                    {hochladen && (
-                      <p className="text-xs text-navy-400 flex items-center gap-1.5">
-                        <Loader2 size={11} className="animate-spin" /> KI analysiert Police…
-                      </p>
+                    {form.police.typ === 'application/pdf' && !form.zusammenfassung && (
+                      <button
+                        type="button"
+                        onClick={() => analyseStarten(form.police.pfad)}
+                        disabled={analyseLaeuft}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                        style={{ background: '#f0eeff', color: '#5b4fa8', border: '1px solid #c8c0f0' }}
+                      >
+                        {analyseLaeuft ? <><Loader2 size={12} className="animate-spin" /> Analysiere…</> : <><Sparkles size={12} /> Police von KI analysieren lassen</>}
+                      </button>
                     )}
-                    {analysiert && form.zusammenfassung && (
+                    {form.zusammenfassung && (
                       <div className="rounded-xl px-3 py-2.5 space-y-1" style={{ background: '#f0eeff', border: '1px solid #c8c0f0' }}>
                         <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
                           <Sparkles size={11} /> KI-Zusammenfassung
