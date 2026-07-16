@@ -353,12 +353,15 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
   const immobilie = immobilien.find(i => i.id === ausgewaehlteId)
 
   const alleJahre = useMemo(() => {
-    if (!immobilie) return []
     const jahre = new Set()
-    ;(immobilie.instandhaltung || []).forEach(m => { if (m.datum) jahre.add(m.datum.slice(0, 4)) })
-    ;(immobilie.steuern || []).forEach(s => { if (s.steuerjahr) jahre.add(String(s.steuerjahr)) })
+    // Immer die letzten 5 Jahre anbieten
+    for (let j = aktuellesJahr; j >= aktuellesJahr - 4; j--) jahre.add(String(j))
+    if (immobilie) {
+      ;(immobilie.instandhaltung || []).forEach(m => { if (m.datum) jahre.add(m.datum.slice(0, 4)) })
+      ;(immobilie.steuern || []).forEach(s => { if (s.steuerjahr) jahre.add(String(s.steuerjahr)) })
+    }
     return [...jahre].sort((a, b) => b - a)
-  }, [immobilie])
+  }, [immobilie, aktuellesJahr])
 
   const zeitraumLabel = filterModus === 'jahr'
     ? `Steuerjahr ${filterJahr}`
