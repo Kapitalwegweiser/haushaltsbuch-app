@@ -25,6 +25,20 @@ Deno.serve(async (req) => {
       i.datum && i.datum.startsWith(jahr)
     )
 
+    // Für 15%-Regel: ALLE Instandhaltungen in den ersten 3 Jahren nach Kauf (§6 Abs.1 Nr.1a EStG)
+    const gebaeudeAnteil = Math.round(kaufpreis * 0.8)
+    const schwelle15Prozent = Math.round(gebaeudeAnteil * 0.15)
+    const dreiJahreEnde = kaufjahr ? kaufjahr + 3 : null
+    const instandhaltungenDreiJahre = kaufjahr && dreiJahreEnde
+      ? (immobilie.instandhaltung || []).filter((i: any) => {
+          if (!i.datum) return false
+          const y = parseInt(i.datum.slice(0, 4))
+          return y >= kaufjahr && y < dreiJahreEnde
+        })
+      : []
+    const summeDreiJahre = instandhaltungenDreiJahre.reduce((s: number, i: any) => s + (Number(i.betrag) || 0), 0)
+    const istImDreiJahresFenster = kaufjahr ? (Number(steuerjahr) >= kaufjahr && Number(steuerjahr) < dreiJahreEnde!) : false
+
     // Wirtschaftsplan / Jahresabrechnung für das Steuerjahr
     const wirtschaftsplan = (immobilie.wirtschaftsplaene || []).find((w: any) => w.jahr === jahr)
 
@@ -34,52 +48,69 @@ Deno.serve(async (req) => {
     // Finanzierung
     const fin = immobilie.finanzierung || {}
 
-    const prompt = `Du bist ein deutschsprachiger Steuerexperte für Immobilien. Analysiere die folgenden Daten für das Steuerjahr ${steuerjahr} und antworte NUR mit dem JSON-Objekt unten — kein Text davor oder danach.
+    const prompt = `Du bist ein präziser Steuerberater für deutsche Immobilienbesteuerung (Anlage V). Analysiere die Daten für Steuerjahr ${steuerjahr}. Antworte NUR mit dem JSON-Objekt — kein Text davor oder danach.
 
-IMMOBILIENDATEN:
+IMMOBILIE:
 - Objekt: ${immobilie.name || 'Unbekannt'}, ${immobilie.adresse || ''}
-- Kaufpreis: ${kaufpreis > 0 ? kaufpreis + ' €' : 'nicht angegeben'}
-- Kaufdatum: ${immobilie.kaufdatum || 'nicht angegeben'} (Kaufjahr: ${kaufjahr || 'unbekannt'})
+- Kaufpreis gesamt: ${kaufpreis > 0 ? kaufpreis + ' €' : 'nicht angegeben'}
+- Kaufdatum: ${immobilie.kaufdatum || 'nicht angegeben'}
 - Wohnfläche: ${immobilie.flaeche || 'unbekannt'} m²
+- Berechneter Gebäudeanteil (80% des Kaufpreises): ${gebaeudeAnteil > 0 ? gebaeudeAnteil + ' €' : 'nicht berechenbar'}
 
 MIETER & EINNAHMEN ${steuerjahr}:
 ${mieter.length > 0 ? mieter.map((m: any) => {
   const kalt = Number(m.kaltmiete) || 0
   const nk = Number(m.nebenkosten) || 0
-  return `- ${m.name || 'Mieter'}: Kaltmiete ${kalt}€/Monat, Nebenkosten ${nk}€/Monat`
+  return `- ${m.name || 'Mieter'}: Kaltmiete ${kalt} €/Monat, NK-Vorauszahlung ${nk} €/Monat (NK nicht steuerlich relevant als Einnahme wenn durchlaufend)`
 }).join('\n') : '- Keine Mieter eingetragen'}
 
 FINANZIERUNG:
 - Darlehensbetrag: ${Number(fin.betrag) || 0} €
 - Zinssatz: ${Number(fin.zinssatz) || 0} %
 - Tilgung: ${Number(fin.tilgung) || 0} %
-- Geschätzte Jahreszinsen: ${Math.round(Number(fin.betrag) * Number(fin.zinssatz) / 100)} €
+- Errechnete Jahreszinsen: ${Math.round(Number(fin.betrag) * Number(fin.zinssatz) / 100)} € (NUR Zinsen absetzbar, NICHT Tilgung)
 
-INSTANDHALTUNGEN ${steuerjahr}:
+INSTANDHALTUNGEN IM STEUERJAHR ${steuerjahr}:
 ${instandhaltungen.length > 0 ? instandhaltungen.map((i: any) =>
-  `- ${i.datum}: ${i.beschreibung || 'Maßnahme'}, ${Number(i.kosten) || 0} €, Kategorie: ${i.kategorie || 'nicht angegeben'}`
-).join('\n') : '- Keine Instandhaltungen eingetragen'}
+  `- ${i.datum}: "${i.beschreibung || 'Maßnahme'}", ${Number(i.betrag) || 0} €, Kategorie: ${i.kategorie || 'nicht angegeben'}`
+).join('\n') : '- Keine Instandhaltungen im Steuerjahr'}
 
-WIRTSCHAFTSPLAN / JAHRESABRECHNUNG ${steuerjahr}:
-${wirtschaftsplan ? `- Gesamtbetrag Hausgeld: ${Number(wirtschaftsplan.betrag) || 0} €
-- Beschreibung: ${wirtschaftsplan.beschreibung || '—'}` : '- Kein Wirtschaftsplan eingetragen'}
+15%-REGEL PRÜFUNG (§6 Abs. 1 Nr. 1a EStG — anschaffungsnahe Herstellungskosten):
+- Kaufjahr: ${kaufjahr || 'unbekannt'}
+- 3-Jahres-Fenster: ${kaufjahr ? kaufjahr + ' bis ' + (kaufjahr + 2) : 'nicht berechenbar'} (ACHTUNG: 3 Jahre = Kaufjahr, Kaufjahr+1, Kaufjahr+2)
+- Steuerjahr ${steuerjahr} liegt ${istImDreiJahresFenster ? 'IM 3-Jahres-Fenster → 15%-Regel PRÜFEN' : 'AUSSERHALB des 3-Jahres-Fensters → 15%-Regel nicht anwendbar'}
+- 15%-Schwelle = 15% des Gebäudeanteils: ${schwelle15Prozent > 0 ? schwelle15Prozent + ' €' : 'nicht berechenbar'}
+- KUMULATIVE Summe ALLER Instandhaltungen im 3-Jahres-Fenster (alle Jahre zusammen): ${summeDreiJahre} €
+- Details aller Maßnahmen im 3-Jahres-Fenster: ${instandhaltungenDreiJahre.length > 0 ? instandhaltungenDreiJahre.map((i: any) => `${i.datum}: ${i.beschreibung} ${Number(i.betrag) || 0}€`).join(', ') : 'keine'}
+- Ergebnis 15%-Prüfung: ${istImDreiJahresFenster ? (summeDreiJahre > schwelle15Prozent ? `SCHWELLE ÜBERSCHRITTEN (${summeDreiJahre}€ > ${schwelle15Prozent}€) → ALLE Maßnahmen im Fenster werden anschaffungsnahe Herstellungskosten → zur AfA-Basis addieren, KEINE separate Abschreibung` : `Schwelle NICHT überschritten (${summeDreiJahre}€ ≤ ${schwelle15Prozent}€) → normale Klassifizierung als Erhaltungsaufwand oder Herstellungsaufwand`) : 'nicht anwendbar'}
+
+WIRTSCHAFTSPLAN ${steuerjahr}:
+${wirtschaftsplan ? `- Hausgeld gesamt: ${Number(wirtschaftsplan.betrag) || 0} €
+- Beschreibung: ${wirtschaftsplan.beschreibung || '—'}
+- Hinweis: Vom Hausgeld absetzbar: Verwaltungskosten, Versicherungen, lfd. Betriebskosten. NICHT sofort absetzbar: Zuführung zur Instandhaltungsrücklage (erst bei Verwendung durch WEG).` : '- Kein Wirtschaftsplan eingetragen'}
 
 GRUNDSTEUER ${steuerjahr}:
-${grundsteuer ? `- Betrag: ${Number(grundsteuer.betrag) || 0} €` : '- Nicht eingetragen'}
+${grundsteuer ? `- Betrag: ${Number(grundsteuer.betrag) || 0} € (vollständig absetzbar als Werbungskosten)` : '- Nicht eingetragen'}
 
-AUFGABE:
-1. Berechne die steuerlichen Einnahmen (Kaltmiete × 12 pro aktivem Mieter)
-2. Ermittle die Werbungskosten:
-   - AfA: Bei Gebäuden nach 1924 = 2% der Anschaffungskosten (nur Gebäudeanteil, ca. 70-80% des Kaufpreises, nicht Grundstück). Falls Kaufdatum nach 01.09.2023: AfA = 3%.
-   - Schuldzinsen: Jahreszinsen komplett absetzbar, Tilgung NICHT
-   - Grundsteuer: komplett absetzbar
-   - Hausgeld: Verwaltungskosten + Versicherungen absetzbar; Instandhaltungsrücklage erst bei tatsächlicher Verwendung (im Wirtschaftsplan prüfen)
-3. Instandhaltungen klassifizieren:
-   - Erhaltungsaufwand (sofort absetzbar): Reparaturen, Wartungen, Ersatz gleichwertiger Teile
-   - Herstellungsaufwand (aktivierungspflichtig, über Nutzungsdauer verteilen): Modernisierungen, Verbesserungen, neue Bauteile die den Standard erhöhen
-   - 15%-Regel beachten: Instandsetzungen in den ersten 3 Jahren nach Kauf, die 15% des Gebäudekaufpreises übersteigen = anschaffungsnahe Herstellungskosten → zur AfA-Basis addieren
+STEUERLICHE REGELN — EXAKT ANZUWENDEN:
 
-Antworte AUSSCHLIESSLICH mit diesem JSON:
+AfA (§7 Abs. 4 EStG):
+- Gebäude Baujahr nach 1924: AfA-Satz 2% pro Jahr
+- Kaufdatum ab 01.10.2023: AfA-Satz 3% pro Jahr (§7 Abs. 4 Satz 1 Nr. 2a EStG n.F.)
+- Bemessungsgrundlage = Gebäudeanteil (NICHT Grundstück) = ca. 80% des Kaufpreises
+- Falls anschaffungsnahe Herstellungskosten (15%-Regel greift): Diese zur AfA-Basis addieren, dann neuer AfA-Betrag auf erhöhte Basis mit demselben AfA-Satz — KEINE separate Nutzungsdauer für die Einzelmaßnahmen
+
+Instandhaltungsklassifizierung (NUR wenn 15%-Regel NICHT greift oder außerhalb 3-Jahres-Fenster):
+- Erhaltungsaufwand (sofort absetzbar): Reparaturen, Austausch gleichwertiger Bauteile, Wartung
+- Herstellungsaufwand (über Nutzungsdauer): Modernisierung die Gebäudestandard erhöht, neue Bauteile die vorher nicht vorhanden waren
+- Grenzfälle: Heizungstausch = Erhaltungsaufwand wenn Ersatz; Badmodernisierung mit gleichem Standard = Erhaltungsaufwand; Anbau/Aufstockung = immer Herstellungsaufwand
+
+KRITISCHE FEHLER DIE DU VERMEIDEN MUSST:
+1. Niemals einzelne Positionen als "anschaffungsnah" einstufen wenn die KUMULATIVE SUMME die Schwelle nicht überschreitet
+2. Wenn 15%-Regel greift: ALLE betroffenen Maßnahmen laufen über erhöhte AfA-Basis — KEINE separaten 20-Jahres-Abschreibungen für einzelne Maßnahmen
+3. Schuldzinsen sind nur der Zinsanteil, nie die Tilgung
+
+Antworte AUSSCHLIESSLICH mit diesem JSON (keine Beispielwerte, echte Zahlen):
 {
   "steuerjahr": ${steuerjahr},
   "einnahmen": {
@@ -88,28 +119,35 @@ Antworte AUSSCHLIESSLICH mit diesem JSON:
     "gesamt": 0
   },
   "werbungskosten": [
-    {"kategorie": "AfA (Gebäudeabschreibung)", "betrag": 0, "erklaerung": "2% von X€ Bemessungsgrundlage (80% des Kaufpreises)", "absetzbar": true},
-    {"kategorie": "Schuldzinsen", "betrag": 0, "erklaerung": "Zinsen aus Darlehen, Tilgung nicht absetzbar", "absetzbar": true},
-    {"kategorie": "Grundsteuer", "betrag": 0, "erklaerung": "Vollständig absetzbar", "absetzbar": true},
-    {"kategorie": "Hausgeld / Betriebskosten", "betrag": 0, "erklaerung": "Verwaltung und Versicherungen absetzbar, Rücklage nur bei Verwendung", "absetzbar": true}
+    {"kategorie": "AfA (Gebäudeabschreibung)", "betrag": 0, "erklaerung": "X% von Y€ Bemessungsgrundlage (Gebäudeanteil 80% des Kaufpreises)"},
+    {"kategorie": "Schuldzinsen", "betrag": 0, "erklaerung": "Zinsanteil aus Darlehen X€ × Y% = Z€; Tilgung nicht absetzbar"},
+    {"kategorie": "Grundsteuer", "betrag": 0, "erklaerung": "Vollständig absetzbar gemäß Bescheid"},
+    {"kategorie": "Hausgeld / Betriebskosten", "betrag": 0, "erklaerung": "Absetzbarer Anteil aus Wirtschaftsplan (ohne Rücklage)"}
   ],
   "instandhaltung_sofort": [
-    {"beschreibung": "Beispiel Reparatur", "betrag": 0, "begruendung": "Erhaltungsaufwand – gleichwertiger Ersatz"}
+    {"beschreibung": "Name der Maßnahme", "betrag": 0, "begruendung": "Erhaltungsaufwand weil …"}
   ],
   "instandhaltung_verteilt": [
-    {"beschreibung": "Beispiel Modernisierung", "betrag": 0, "nutzungsdauer_jahre": 0, "absetzbar_pro_jahr": 0, "begruendung": "Herstellungsaufwand – Verbesserung des Standards"}
+    {"beschreibung": "Name der Maßnahme", "betrag": 0, "nutzungsdauer_jahre": 0, "absetzbar_pro_jahr": 0, "begruendung": "Herstellungsaufwand weil … (NUR wenn 15%-Regel nicht greift)"}
   ],
+  "anschaffungsnahe_hk": {
+    "greift": false,
+    "summe_massnahmen": 0,
+    "schwelle": 0,
+    "erklaerung": "Summe X€ überschreitet/unterschreitet Schwelle Y€ (15% von Z€ Gebäudeanteil). Betroffene Maßnahmen: …",
+    "neue_afa_basis": 0,
+    "neuer_afa_betrag": 0
+  },
   "ergebnis": {
     "einnahmen": 0,
     "werbungskosten_gesamt": 0,
     "ueberschuss_verlust": 0,
-    "bewertung": "Überschuss von X€ zu versteuern ODER Verlust von X€ verrechenbar mit anderen Einkünften"
+    "bewertung": "Überschuss von X€ ist als Einkünfte aus V+V zu versteuern ODER Verlust von X€ ist mit anderen Einkünften verrechenbar (negatives Einkommen)"
   },
   "empfehlungen": [
-    "Konkrete Empfehlung 1",
-    "Konkrete Empfehlung 2"
+    "Konkrete steuerliche Empfehlung mit Bezug auf die tatsächlichen Daten"
   ],
-  "disclaimer": "Diese KI-Analyse dient als Orientierung und ersetzt keine Steuerberatung. Bitte mit einem Steuerberater abstimmen."
+  "disclaimer": "Diese KI-Analyse dient als Orientierung und ersetzt keine individuelle Steuerberatung. Bitte mit einem Steuerberater abstimmen."
 }`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -120,7 +158,7 @@ Antworte AUSSCHLIESSLICH mit diesem JSON:
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -132,7 +170,9 @@ Antworte AUSSCHLIESSLICH mit diesem JSON:
     }
 
     const result = await response.json()
-    let text = result.content[0].text.trim()
+    const textBlock = result.content?.find((c: any) => c.type === 'text')
+    if (!textBlock?.text) throw new Error(`Keine Antwort von Claude: ${JSON.stringify(result)}`)
+    let text = textBlock.text.trim()
     text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     const analyse = JSON.parse(text)
 

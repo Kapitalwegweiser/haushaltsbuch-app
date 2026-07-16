@@ -318,6 +318,30 @@ function KiSteuercheckBox({ immobilie, filterJahr, setImmobilien }) {
             </div>
           )}
 
+          {/* Anschaffungsnahe Herstellungskosten (15%-Regel) */}
+          {analyse.anschaffungsnahe_hk && (
+            <div className="rounded-xl px-4 py-3 space-y-2" style={{
+              background: analyse.anschaffungsnahe_hk.greift ? '#fef2f2' : '#f0fdf4',
+              border: `1px solid ${analyse.anschaffungsnahe_hk.greift ? '#fecaca' : '#bbf7d0'}`
+            }}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={13} style={{ color: analyse.anschaffungsnahe_hk.greift ? '#dc2626' : '#16a34a' }} className="shrink-0" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: analyse.anschaffungsnahe_hk.greift ? '#dc2626' : '#15803d' }}>
+                  15%-Regel (§6 Abs. 1 Nr. 1a EStG) — {analyse.anschaffungsnahe_hk.greift ? 'GREIFT' : 'nicht anwendbar'}
+                </p>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: analyse.anschaffungsnahe_hk.greift ? '#7f1d1d' : '#166534' }}>
+                {analyse.anschaffungsnahe_hk.erklaerung}
+              </p>
+              {analyse.anschaffungsnahe_hk.greift && analyse.anschaffungsnahe_hk.neue_afa_basis > 0 && (
+                <div className="rounded-lg px-3 py-2 mt-1" style={{ background: '#fee2e2', border: '1px solid #fca5a5' }}>
+                  <p className="text-[10px] text-red-700 font-medium">Neue AfA-Basis: {euro(analyse.anschaffungsnahe_hk.neue_afa_basis)} → AfA: {euro(analyse.anschaffungsnahe_hk.neuer_afa_betrag)}/Jahr</p>
+                  <p className="text-[10px] text-red-600 mt-0.5">Alle betroffenen Maßnahmen laufen über die erhöhte Gebäude-AfA — keine separate Abschreibung.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Empfehlungen */}
           {analyse.empfehlungen?.length > 0 && (
             <div className="rounded-xl px-4 py-3 space-y-1.5" style={{ background: '#ede9fe' }}>
