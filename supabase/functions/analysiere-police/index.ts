@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
+        max_tokens: 1024,
         messages: [{
           role: 'user',
           content: [
@@ -49,15 +49,22 @@ Deno.serve(async (req) => {
             },
             {
               type: 'text',
-              text: `Analysiere diese Versicherungspolice sorgfältig und antworte NUR mit einem JSON-Objekt, kein Text davor oder danach. Falls die Police mehrere Deckungsarten enthält (z.B. Hausrat + Haftpflicht), führe Versicherungssumme und Selbstbehalt für jede separat auf.
+              text: `Analysiere diese Versicherungspolice und antworte NUR mit diesem JSON-Objekt, kein Text davor oder danach.
+
+Regeln:
+- Bei mehreren Deckungen (z.B. Hausrat + Haftpflicht): summen und selbstbehalte als Array mit je {label, wert}
+- ausschluesse: max. 4 Punkte, jeder max. 6 Wörter, nur das Wesentliche
+- faelligkeit, kuendigung, hinweis: jeweils ein kurzer Satz oder leer
 
 {
-  "deckung": "Was genau ist versichert – ein präziser Satz mit allen enthaltenen Deckungen",
-  "summe": "Versicherungssumme(n) – bei mehreren Deckungen je separat z.B. 'Hausrat: 67.000 CHF · Haftpflicht: 5 Mio. CHF'",
-  "praemie": "Jahresprämie laut Dokument z.B. '406 CHF / Jahr' oder leer wenn nicht gefunden",
-  "selbstbehalt": "Selbstbehalt(e) – bei mehreren Deckungen je separat z.B. 'Hausrat: CHF 200 · Haftpflicht: CHF 200' oder 'Kein Selbstbehalt' wenn keiner vorhanden",
-  "ausschluesse": ["Suche aktiv nach Ausschlüssen, Nicht-Leistungen oder Einschränkungen im Dokument und liste die 3-5 wichtigsten auf. Falls keine explizit genannt: typische Ausschlüsse dieser Versicherungsart angeben."],
-  "hinweis": "Wichtiger Hinweis zu Fälligkeit, Kündigungsfrist, Besonderheiten oder leer"
+  "deckung": "Ein Satz: was ist versichert",
+  "summen": [{"label": "Hausrat", "wert": "67.000 CHF"}, {"label": "Haftpflicht", "wert": "5 Mio. CHF"}],
+  "praemie": "406.61 CHF / Jahr",
+  "selbstbehalte": [{"label": "Hausrat", "wert": "CHF 200"}, {"label": "Haftpflicht", "wert": "CHF 200"}],
+  "ausschluesse": ["Vorsätzliche Schäden", "Krieg und Kernenergie", "Betriebs- und Berufshaftpflicht"],
+  "faelligkeit": "Jährlich, Fälligkeit 01.01.",
+  "kuendigung": "3 Monate vor Ende des Versicherungsjahres",
+  "hinweis": "Sonstiger wichtiger Hinweis oder leer"
 }`,
             },
           ],

@@ -443,44 +443,92 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                                 <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
                                   <Sparkles size={11} /> KI-Zusammenfassung
                                 </p>
+
+                                {/* Was ist versichert */}
                                 {v.zusammenfassung.deckung && (
                                   <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
                                     <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Was ist versichert</p>
                                     <p className="text-xs text-navy-800">{v.zusammenfassung.deckung}</p>
                                   </div>
                                 )}
+
+                                {/* Versicherungssummen */}
+                                {(v.zusammenfassung.summen?.length > 0 || v.zusammenfassung.summe) && (
+                                  <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                    <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-1">Versicherungssumme</p>
+                                    {v.zusammenfassung.summen?.length > 0
+                                      ? <div className="space-y-0.5">
+                                          {v.zusammenfassung.summen.map((s, i) => (
+                                            <div key={i} className="flex justify-between text-xs">
+                                              <span className="text-navy-500">{s.label}</span>
+                                              <span className="font-semibold text-navy-800">{s.wert}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      : <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.summe}</p>
+                                    }
+                                  </div>
+                                )}
+
+                                {/* Prämie + Selbstbehalt nebeneinander */}
                                 <div className="grid grid-cols-2 gap-2">
-                                  {v.zusammenfassung.summe && (
-                                    <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
-                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Vers.-summe</p>
-                                      <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.summe}</p>
-                                    </div>
-                                  )}
                                   {v.zusammenfassung.praemie && (
                                     <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
-                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Jahresprämie</p>
+                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-1">Jahresprämie</p>
                                       <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.praemie}</p>
                                     </div>
                                   )}
-                                  {v.zusammenfassung.selbstbehalt && (
+                                  {(v.zusammenfassung.selbstbehalte?.length > 0 || v.zusammenfassung.selbstbehalt) && (
                                     <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
-                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Selbstbehalt</p>
-                                      <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.selbstbehalt}</p>
+                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-1">Selbstbehalt</p>
+                                      {v.zusammenfassung.selbstbehalte?.length > 0
+                                        ? <div className="space-y-0.5">
+                                            {v.zusammenfassung.selbstbehalte.map((s, i) => (
+                                              <div key={i} className="flex justify-between text-xs">
+                                                <span className="text-navy-500">{s.label}</span>
+                                                <span className="font-semibold text-navy-800">{s.wert}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        : <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.selbstbehalt}</p>
+                                      }
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Nicht versichert */}
                                 {v.zusammenfassung.ausschluesse?.length > 0 && (
                                   <div className="rounded-lg px-3 py-2.5" style={{ background: '#fdecea', border: '1px solid #f5b8b8' }}>
                                     <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#7a1e1e' }}>Nicht versichert</p>
-                                    <ul className="space-y-0.5">
+                                    <ul className="space-y-1">
                                       {v.zusammenfassung.ausschluesse.map((a, i) => (
-                                        <li key={i} className="text-xs flex items-start gap-1.5" style={{ color: '#7a1e1e' }}>
-                                          <span className="shrink-0 mt-0.5">✕</span> {a}
+                                        <li key={i} className="text-xs flex items-center gap-1.5" style={{ color: '#7a1e1e' }}>
+                                          <span className="shrink-0">✕</span> {a}
                                         </li>
                                       ))}
                                     </ul>
                                   </div>
                                 )}
+
+                                {/* Fälligkeit + Kündigung */}
+                                {(v.zusammenfassung.faelligkeit || v.zusammenfassung.kuendigung) && (
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {v.zusammenfassung.faelligkeit && (
+                                      <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                        <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Fälligkeit</p>
+                                        <p className="text-xs text-navy-800">{v.zusammenfassung.faelligkeit}</p>
+                                      </div>
+                                    )}
+                                    {v.zusammenfassung.kuendigung && (
+                                      <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                        <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Kündigung</p>
+                                        <p className="text-xs text-navy-800">{v.zusammenfassung.kuendigung}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Sonstiger Hinweis */}
                                 {v.zusammenfassung.hinweis && (
                                   <div className="rounded-lg px-3 py-2 flex items-start gap-1.5" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
                                     <AlertTriangle size={11} className="shrink-0 mt-0.5" style={{ color: '#b45309' }} />
