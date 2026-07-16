@@ -414,7 +414,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                         </div>
 
                         {/* KI-Zusammenfassung */}
-                        {v.police?.pfad && v.police?.typ === 'application/pdf' && !v.zusammenfassung && (
+                        {v.police?.pfad && (
                           <button
                             onClick={() => analyseStartenKarte(v)}
                             disabled={analyseLaeuft}
