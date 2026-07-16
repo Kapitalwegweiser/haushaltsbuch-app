@@ -1951,7 +1951,7 @@ function SteuercheckTab({ immobilie, onSave }) {
           {analyse.werbungskosten?.length > 0 && (
             <div className="card space-y-3">
               <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide">Werbungskosten im Detail</p>
-              {analyse.werbungskosten.map((w: any, i: number) => (
+              {analyse.werbungskosten.map((w, i) => (
                 <div key={i} className="flex items-start justify-between gap-3 pb-3 border-b border-navy-50 last:border-0 last:pb-0">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-navy-800">{w.kategorie}</p>
@@ -1969,7 +1969,7 @@ function SteuercheckTab({ immobilie, onSave }) {
               <p className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: '#2e6b52' }}>
                 <Check size={13} /> Sofort absetzbar (Erhaltungsaufwand)
               </p>
-              {analyse.instandhaltung_sofort.map((m: any, i: number) => (
+              {analyse.instandhaltung_sofort.map((m, i) => (
                 <div key={i} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2" style={{ background: '#edf7f2' }}>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-navy-800">{m.beschreibung}</p>
@@ -1987,7 +1987,7 @@ function SteuercheckTab({ immobilie, onSave }) {
               <p className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: '#b45309' }}>
                 <Calendar size={13} /> Über mehrere Jahre zu verteilen (Herstellungsaufwand)
               </p>
-              {analyse.instandhaltung_verteilt.map((m: any, i: number) => (
+              {analyse.instandhaltung_verteilt.map((m, i) => (
                 <div key={i} className="rounded-lg px-3 py-2.5 space-y-1" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
                   <div className="flex justify-between">
                     <p className="text-xs font-semibold text-navy-800">{m.beschreibung}</p>
@@ -2006,7 +2006,7 @@ function SteuercheckTab({ immobilie, onSave }) {
           {analyse.empfehlungen?.length > 0 && (
             <div className="card space-y-2">
               <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide">Empfehlungen</p>
-              {analyse.empfehlungen.map((e: string, i: number) => (
+              {analyse.empfehlungen.map((e, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs text-navy-700">
                   <span style={{ color: '#5b4fa8' }}>→</span> {e}
                 </div>
