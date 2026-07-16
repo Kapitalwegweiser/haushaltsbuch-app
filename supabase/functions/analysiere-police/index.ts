@@ -52,9 +52,11 @@ Deno.serve(async (req) => {
               text: `Analysiere diese Versicherungspolice und antworte NUR mit einem JSON-Objekt, kein Text davor oder danach:
 {
   "deckung": "Was genau ist versichert – ein kurzer Satz",
-  "summe": "Versicherungssumme z.B. '5 Mio. CHF' oder leer",
-  "selbstbehalt": "Selbstbehalt z.B. '200 CHF' oder leer",
-  "hinweis": "Wichtigster Hinweis oder Ausschluss in einem kurzen Satz, oder leer"
+  "summe": "Versicherungssumme z.B. '5 Mio. CHF' oder leer wenn nicht gefunden",
+  "praemie": "Jahresprämie laut Dokument z.B. '406 CHF / Jahr' oder leer wenn nicht gefunden",
+  "selbstbehalt": "Selbstbehalt z.B. '200 CHF' oder leer wenn nicht gefunden",
+  "ausschluesse": ["Ausschluss 1", "Ausschluss 2", "Ausschluss 3"],
+  "hinweis": "Sonstiger wichtiger Hinweis in einem Satz oder leer"
 }`,
             },
           ],
@@ -68,7 +70,9 @@ Deno.serve(async (req) => {
     }
 
     const result = await response.json()
-    const text = result.content[0].text.trim()
+    let text = result.content[0].text.trim()
+    // Markdown-Codeblöcke entfernen falls Claude ```json ... ``` zurückgibt
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     const zusammenfassung = JSON.parse(text)
 
     return new Response(JSON.stringify({ zusammenfassung }), {

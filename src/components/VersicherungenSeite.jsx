@@ -456,6 +456,12 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                                       <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.summe}</p>
                                     </div>
                                   )}
+                                  {v.zusammenfassung.praemie && (
+                                    <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Jahresprämie</p>
+                                      <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.praemie}</p>
+                                    </div>
+                                  )}
                                   {v.zusammenfassung.selbstbehalt && (
                                     <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
                                       <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Selbstbehalt</p>
@@ -463,6 +469,18 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                                     </div>
                                   )}
                                 </div>
+                                {v.zusammenfassung.ausschluesse?.length > 0 && (
+                                  <div className="rounded-lg px-3 py-2.5" style={{ background: '#fdecea', border: '1px solid #f5b8b8' }}>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#7a1e1e' }}>Nicht versichert</p>
+                                    <ul className="space-y-0.5">
+                                      {v.zusammenfassung.ausschluesse.map((a, i) => (
+                                        <li key={i} className="text-xs flex items-start gap-1.5" style={{ color: '#7a1e1e' }}>
+                                          <span className="shrink-0 mt-0.5">✕</span> {a}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                                 {v.zusammenfassung.hinweis && (
                                   <div className="rounded-lg px-3 py-2 flex items-start gap-1.5" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
                                     <AlertTriangle size={11} className="shrink-0 mt-0.5" style={{ color: '#b45309' }} />
