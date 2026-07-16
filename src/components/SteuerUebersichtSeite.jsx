@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
-import { Building2, Download, Filter, FileText, Receipt, Info } from 'lucide-react'
+import { Building2, Download, Filter, FileText, Receipt, Info, Sparkles, Loader2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import JSZip from 'jszip'
+import { supabase } from '../lib/supabase'
 
 function euro(n) {
   if (!n && n !== 0) return '—'
@@ -142,7 +143,205 @@ ${steuern.length > 0 ? `
 </html>`
 }
 
-export default function SteuerUebersichtSeite({ immobilien = [] }) {
+function KiSteuercheckBox({ immobilie, filterJahr, setImmobilien }) {
+  const gespeichert = immobilie?.steuercheck?.[filterJahr]
+  const [analyse, setAnalyse] = useState(gespeichert || null)
+  const [laeuft, setLaeuft] = useState(false)
+  const [fehler, setFehler] = useState(null)
+  const [aufgeklappt, setAufgeklappt] = useState(!!gespeichert)
+
+  async function starten() {
+    setLaeuft(true)
+    setFehler(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        'https://ygcmfrwgailmjanoyozm.supabase.co/functions/v1/steuercheck-immobilie',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ immobilie, steuerjahr: Number(filterJahr) }),
+        }
+      )
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Analyse fehlgeschlagen')
+      setAnalyse(json.analyse)
+      setAufgeklappt(true)
+      // Ergebnis im immobilie-Objekt persistieren
+      setImmobilien(prev => prev.map(im =>
+        im.id === immobilie.id
+          ? { ...im, steuercheck: { ...(im.steuercheck || {}), [filterJahr]: json.analyse } }
+          : im
+      ))
+    } catch (e) {
+      setFehler(e.message)
+    } finally {
+      setLaeuft(false)
+    }
+  }
+
+  const ergebnis = analyse?.ergebnis
+  const istVerlust = ergebnis && ergebnis.ueberschuss_verlust < 0
+
+  return (
+    <div className="card space-y-4" style={{ borderColor: '#c4b5f4', borderWidth: '1.5px' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#ede9fe' }}>
+            <Sparkles size={15} style={{ color: '#5b4fa8' }} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-navy-700">KI-Steuercheck {filterJahr}</p>
+            <p className="text-[11px] text-navy-400">Automatische Analyse der steuerlichen Optimierungsmöglichkeiten</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {analyse && (
+            <button onClick={() => setAufgeklappt(v => !v)} className="text-navy-400 hover:text-navy-600 p-1">
+              {aufgeklappt ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          )}
+          <button
+            onClick={starten}
+            disabled={laeuft}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-60 transition-all"
+            style={{ background: laeuft ? '#8b7fc4' : '#5b4fa8' }}
+          >
+            {laeuft ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {laeuft ? 'Analysiert…' : analyse ? 'Neu analysieren' : 'Jetzt analysieren'}
+          </button>
+        </div>
+      </div>
+
+      {fehler && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-xs text-red-700">
+          <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+          {fehler}
+        </div>
+      )}
+
+      {analyse && aufgeklappt && (
+        <div className="space-y-4 pt-1">
+          {/* Ergebnis-Banner */}
+          {ergebnis && (
+            <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${istVerlust ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className="flex items-center gap-2">
+                {istVerlust
+                  ? <TrendingDown size={16} className="text-green-600" />
+                  : <TrendingUp size={16} className="text-amber-600" />}
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: istVerlust ? '#15803d' : '#92400e' }}>
+                    {istVerlust ? 'Steuerlicher Verlust' : 'Steuerlicher Überschuss'}
+                  </p>
+                  <p className="text-[11px] mt-0.5" style={{ color: istVerlust ? '#166534' : '#78350f' }}>
+                    {ergebnis.bewertung}
+                  </p>
+                </div>
+              </div>
+              <p className="text-lg font-bold font-serif" style={{ color: istVerlust ? '#15803d' : '#92400e' }}>
+                {euro(Math.abs(ergebnis.ueberschuss_verlust))}
+              </p>
+            </div>
+          )}
+
+          {/* Einnahmen vs. Werbungskosten */}
+          {ergebnis && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg px-3 py-2.5 text-center" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <p className="text-[10px] text-green-600 uppercase font-semibold tracking-wide mb-1">Einnahmen</p>
+                <p className="text-base font-bold text-green-700 font-serif">{euro(ergebnis.einnahmen)}</p>
+              </div>
+              <div className="rounded-lg px-3 py-2.5 text-center" style={{ background: '#fef3c7', border: '1px solid #fde68a' }}>
+                <p className="text-[10px] text-amber-700 uppercase font-semibold tracking-wide mb-1">Werbungskosten</p>
+                <p className="text-base font-bold text-amber-700 font-serif">{euro(ergebnis.werbungskosten_gesamt)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Werbungskosten-Aufschlüsselung */}
+          {analyse.werbungskosten?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-navy-500 uppercase tracking-widest mb-2">Werbungskosten detail</p>
+              <div className="space-y-1.5">
+                {analyse.werbungskosten.map((w, i) => (
+                  <div key={i} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2" style={{ background: '#f7f3ed' }}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-navy-700">{w.kategorie}</p>
+                      <p className="text-[10px] text-navy-400 mt-0.5">{w.erklaerung}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-navy-700 shrink-0">{euro(w.betrag)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sofort absetzbar */}
+          {analyse.instandhaltung_sofort?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-green-700 uppercase tracking-widest mb-2">Sofort absetzbar (Erhaltungsaufwand)</p>
+              <div className="space-y-1.5">
+                {analyse.instandhaltung_sofort.map((m, i) => (
+                  <div key={i} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2" style={{ background: '#f0fdf4', border: '1px solid #dcfce7' }}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-green-800">{m.beschreibung}</p>
+                      <p className="text-[10px] text-green-600 mt-0.5">{m.begruendung}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-green-700 shrink-0">{euro(m.betrag)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Über mehrere Jahre */}
+          {analyse.instandhaltung_verteilt?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-widest mb-2">Über mehrere Jahre zu verteilen</p>
+              <div className="space-y-1.5">
+                {analyse.instandhaltung_verteilt.map((m, i) => (
+                  <div key={i} className="rounded-lg px-3 py-2" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-medium text-amber-800">{m.beschreibung}</p>
+                      <p className="text-sm font-semibold text-amber-700 shrink-0">{euro(m.betrag)}</p>
+                    </div>
+                    <p className="text-[10px] text-amber-600 mt-1">{m.begruendung}</p>
+                    {m.nutzungsdauer_jahre > 0 && (
+                      <p className="text-[10px] text-amber-700 mt-1 font-medium">
+                        → {euro(m.absetzbar_pro_jahr)}/Jahr über {m.nutzungsdauer_jahre} Jahre
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empfehlungen */}
+          {analyse.empfehlungen?.length > 0 && (
+            <div className="rounded-xl px-4 py-3 space-y-1.5" style={{ background: '#ede9fe' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#5b4fa8' }}>Empfehlungen</p>
+              {analyse.empfehlungen.map((e, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-[10px] font-bold mt-0.5" style={{ color: '#7c3aed' }}>{i + 1}.</span>
+                  <p className="text-xs text-purple-800">{e}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Disclaimer */}
+          {analyse.disclaimer && (
+            <p className="text-[10px] text-navy-400 italic text-center">{analyse.disclaimer}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }) {
   const aktuellesJahr = new Date().getFullYear()
   const [ausgewaehlteId, setAusgewaehlteId] = useState(immobilien[0]?.id ?? '')
   const [filterModus, setFilterModus] = useState('jahr')
@@ -338,6 +537,15 @@ export default function SteuerUebersichtSeite({ immobilien = [] }) {
                   Die Positionen beziehen sich auf die <strong>Anlage V</strong> der deutschen Einkommensteuererklärung. Zeilennummern können je nach Steuerjahr leicht abweichen — bitte mit aktuellem Formular abgleichen.
                 </p>
               </div>
+
+              {/* KI-Steuercheck */}
+              {immobilie && filterModus === 'jahr' && (
+                <KiSteuercheckBox
+                  immobilie={immobilie}
+                  filterJahr={filterJahr}
+                  setImmobilien={setImmobilien || (() => {})}
+                />
+              )}
 
               {/* Erhaltungsaufwendungen */}
               {gefilterteInstandhaltung.length > 0 && (
