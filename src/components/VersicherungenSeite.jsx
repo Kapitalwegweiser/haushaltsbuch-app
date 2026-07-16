@@ -195,6 +195,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   const [hochladen, setHochladen]       = useState(false)
   const [uploadFehler, setUploadFehler] = useState('')
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false)
+  const [analyseFehler, setAnalyseFehler] = useState({})
   const fileRef = useRef()
 
   const gesamtJahr  = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
@@ -239,14 +240,15 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   }
 
   async function analyseStartenKarte(v) {
-    setAnalyseLaeuft(true)
+    setAnalyseLaeuft(v.id)
+    setAnalyseFehler(f => ({ ...f, [v.id]: null }))
     try {
       const zusammenfassung = await analysierePolice(v.police.pfad)
       setVersicherungen(vs => vs.map(x => x.id === v.id ? { ...x, zusammenfassung } : x))
-    } catch {
-      // Fehler still ignorieren
+    } catch (err) {
+      setAnalyseFehler(f => ({ ...f, [v.id]: err.message || 'Analyse fehlgeschlagen' }))
     } finally {
-      setAnalyseLaeuft(false)
+      setAnalyseLaeuft(null)
     }
   }
 
@@ -415,24 +417,60 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
 
                         {/* KI-Zusammenfassung */}
                         {v.police?.pfad && (
-                          <button
-                            onClick={() => analyseStartenKarte(v)}
-                            disabled={analyseLaeuft}
-                            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
-                            style={{ background: '#f0eeff', color: '#5b4fa8', border: '1px solid #c8c0f0' }}
-                          >
-                            {analyseLaeuft ? <><Loader2 size={12} className="animate-spin" /> Analysiere…</> : <><Sparkles size={12} /> Police von KI analysieren lassen</>}
-                          </button>
-                        )}
-                        {v.zusammenfassung && (
-                          <div className="rounded-xl px-3 py-2.5 space-y-1" style={{ background: '#f0eeff', border: '1px solid #c8c0f0' }}>
-                            <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
-                              <Sparkles size={11} /> KI-Zusammenfassung
-                            </p>
-                            {v.zusammenfassung.deckung && <p className="text-xs text-navy-700"><strong>Deckung:</strong> {v.zusammenfassung.deckung}</p>}
-                            {v.zusammenfassung.summe && <p className="text-xs text-navy-700"><strong>Summe:</strong> {v.zusammenfassung.summe}</p>}
-                            {v.zusammenfassung.selbstbehalt && <p className="text-xs text-navy-700"><strong>Selbstbehalt:</strong> {v.zusammenfassung.selbstbehalt}</p>}
-                            {v.zusammenfassung.hinweis && <p className="text-xs text-navy-500 italic">{v.zusammenfassung.hinweis}</p>}
+                          <div className="space-y-2">
+                            {/* Analyse-Button — immer sichtbar wenn Police vorhanden */}
+                            <button
+                              onClick={() => analyseStartenKarte(v)}
+                              disabled={analyseLaeuft === v.id}
+                              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-60"
+                              style={{ background: '#f0eeff', color: '#5b4fa8', border: '1px solid #c8c0f0' }}
+                            >
+                              {analyseLaeuft === v.id
+                                ? <><Loader2 size={12} className="animate-spin" /> KI liest Police…</>
+                                : <><Sparkles size={12} /> {v.zusammenfassung ? 'Erneut analysieren' : 'Police von KI analysieren lassen'}</>}
+                            </button>
+
+                            {/* Fehler */}
+                            {analyseFehler[v.id] && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <AlertTriangle size={11} /> {analyseFehler[v.id]}
+                              </p>
+                            )}
+
+                            {/* Ergebnis */}
+                            {v.zusammenfassung && (
+                              <div className="rounded-xl px-3 py-3 space-y-2" style={{ background: '#f0eeff', border: '1px solid #c8c0f0' }}>
+                                <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
+                                  <Sparkles size={11} /> KI-Zusammenfassung
+                                </p>
+                                {v.zusammenfassung.deckung && (
+                                  <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                    <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Was ist versichert</p>
+                                    <p className="text-xs text-navy-800">{v.zusammenfassung.deckung}</p>
+                                  </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  {v.zusammenfassung.summe && (
+                                    <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Vers.-summe</p>
+                                      <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.summe}</p>
+                                    </div>
+                                  )}
+                                  {v.zusammenfassung.selbstbehalt && (
+                                    <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.6)' }}>
+                                      <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-0.5">Selbstbehalt</p>
+                                      <p className="text-xs font-semibold text-navy-800">{v.zusammenfassung.selbstbehalt}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                {v.zusammenfassung.hinweis && (
+                                  <div className="rounded-lg px-3 py-2 flex items-start gap-1.5" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
+                                    <AlertTriangle size={11} className="shrink-0 mt-0.5" style={{ color: '#b45309' }} />
+                                    <p className="text-xs" style={{ color: '#7a5000' }}>{v.zusammenfassung.hinweis}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
 
