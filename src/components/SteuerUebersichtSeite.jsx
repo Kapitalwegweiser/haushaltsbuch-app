@@ -503,6 +503,15 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
             </div>
           </div>
 
+          {/* KI-Steuercheck — immer sichtbar wenn Immobilie + Steuerjahr gewählt */}
+          {immobilie && filterModus === 'jahr' && (
+            <KiSteuercheckBox
+              immobilie={immobilie}
+              filterJahr={filterJahr}
+              setImmobilien={setImmobilien || (() => {})}
+            />
+          )}
+
           {/* Kein Ergebnis */}
           {!hatErgebnisse ? (
             <div className="card text-center py-8 border-dashed">
@@ -537,15 +546,6 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
                   Die Positionen beziehen sich auf die <strong>Anlage V</strong> der deutschen Einkommensteuererklärung. Zeilennummern können je nach Steuerjahr leicht abweichen — bitte mit aktuellem Formular abgleichen.
                 </p>
               </div>
-
-              {/* KI-Steuercheck */}
-              {immobilie && filterModus === 'jahr' && (
-                <KiSteuercheckBox
-                  immobilie={immobilie}
-                  filterJahr={filterJahr}
-                  setImmobilien={setImmobilien || (() => {})}
-                />
-              )}
 
               {/* Erhaltungsaufwendungen */}
               {gefilterteInstandhaltung.length > 0 && (
