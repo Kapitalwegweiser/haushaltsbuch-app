@@ -3,8 +3,9 @@ import {
   Building2, MapPin, Maximize2, DoorOpen, Euro, Plus, ChevronLeft,
   User, Wrench, Landmark, Edit2, Trash2, Check, X, Upload, FileText,
   Calendar, AlertCircle, Home, ChevronDown, ChevronUp, Calculator, TrendingDown,
-  Users, StickyNote, Download, Filter
+  Users, StickyNote, Download, Filter, Sparkles, Loader2, TrendingUp, Info
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import JSZip from 'jszip'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -1834,8 +1835,191 @@ const TABS = [
   { id: 'instandhaltung',    label: 'Instandhaltung',         icon: Wrench },
   { id: 'wirtschaftsplaene', label: 'Wirtschaftspläne',       icon: Calculator },
   { id: 'steuern',           label: 'Steuern',                icon: Euro },
+  { id: 'steuercheck',       label: 'KI-Steuercheck',         icon: Sparkles },
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
+
+// ─── KI-Steuercheck Tab ───────────────────────────────────────────────────────
+function SteuercheckTab({ immobilie, onSave }) {
+  const aktuellesJahr = new Date().getFullYear()
+  const [steuerjahr, setSteuerjahr] = useState(String(aktuellesJahr - 1))
+  const [laeuft, setLaeuft] = useState(false)
+  const [fehler, setFehler] = useState(null)
+
+  const gespeicherteAnalysen = immobilie.steuercheck || {}
+  const analyse = gespeicherteAnalysen[steuerjahr] || null
+
+  async function checkStarten() {
+    setLaeuft(true); setFehler(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        'https://ygcmfrwgailmjanoyozm.supabase.co/functions/v1/steuercheck-immobilie',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ immobilie, steuerjahr }),
+        }
+      )
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Analyse fehlgeschlagen')
+      const aktualisiert = { ...gespeicherteAnalysen, [steuerjahr]: json.analyse }
+      onSave({ ...immobilie, steuercheck: aktualisiert })
+    } catch (err) {
+      setFehler(err.message)
+    } finally {
+      setLaeuft(false)
+    }
+  }
+
+  const jahre = Array.from({ length: 10 }, (_, i) => String(aktuellesJahr - i))
+
+  return (
+    <div className="space-y-5">
+      {/* Disclaimer */}
+      <div className="flex items-start gap-2 rounded-xl px-4 py-3 text-sm" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
+        <Info size={15} className="shrink-0 mt-0.5" style={{ color: '#b45309' }} />
+        <p style={{ color: '#7a5000' }}>Diese KI-Analyse ist eine Orientierungshilfe — kein Steuerberatungsersatz. Bitte mit einem Steuerberater abstimmen.</p>
+      </div>
+
+      {/* Jahresauswahl + Button */}
+      <div className="card flex items-center gap-4">
+        <div>
+          <label className="label">Steuerjahr</label>
+          <select className="input w-32" value={steuerjahr} onChange={e => setSteuerjahr(e.target.value)}>
+            {jahre.map(j => <option key={j} value={j}>{j}</option>)}
+          </select>
+        </div>
+        <div className="flex-1" />
+        <button
+          onClick={checkStarten}
+          disabled={laeuft}
+          className="btn-primary flex items-center gap-2 disabled:opacity-60 mt-4"
+        >
+          {laeuft ? <><Loader2 size={15} className="animate-spin" /> KI analysiert…</> : <><Sparkles size={15} /> Steuercheck {steuerjahr} starten</>}
+        </button>
+      </div>
+
+      {fehler && (
+        <div className="rounded-xl px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200 flex items-center gap-2">
+          <AlertCircle size={14} /> {fehler}
+        </div>
+      )}
+
+      {analyse && (
+        <div className="space-y-4">
+          {/* Ergebnis-Banner */}
+          <div className={`rounded-xl px-5 py-4 flex items-center justify-between`}
+            style={{
+              background: analyse.ergebnis?.ueberschuss_verlust >= 0 ? '#fdecea' : '#edf7f2',
+              border: `1px solid ${analyse.ergebnis?.ueberschuss_verlust >= 0 ? '#f5b8b8' : '#c5e0d4'}`
+            }}>
+            <div>
+              <p className="text-xs uppercase tracking-wide font-semibold mb-0.5"
+                style={{ color: analyse.ergebnis?.ueberschuss_verlust >= 0 ? '#7a1e1e' : '#2e6b52' }}>
+                Steuerliches Ergebnis {steuerjahr}
+              </p>
+              <p className="font-serif text-2xl font-bold"
+                style={{ color: analyse.ergebnis?.ueberschuss_verlust >= 0 ? '#7a1e1e' : '#2e6b52' }}>
+                {euro(Math.abs(analyse.ergebnis?.ueberschuss_verlust || 0))}
+                <span className="text-sm font-normal ml-2">
+                  {analyse.ergebnis?.ueberschuss_verlust >= 0 ? 'Überschuss (zu versteuern)' : 'Verlust (verrechenbar)'}
+                </span>
+              </p>
+            </div>
+            {analyse.ergebnis?.ueberschuss_verlust >= 0
+              ? <TrendingUp size={28} style={{ color: '#7a1e1e', opacity: 0.5 }} />
+              : <TrendingDown size={28} style={{ color: '#2e6b52', opacity: 0.5 }} />}
+          </div>
+
+          {/* Einnahmen vs. Werbungskosten */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card text-center">
+              <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-1">Mieteinnahmen</p>
+              <p className="text-lg font-bold text-navy-800">{euro(analyse.einnahmen?.gesamt || 0)}</p>
+            </div>
+            <div className="card text-center">
+              <p className="text-[10px] text-navy-400 uppercase tracking-wide mb-1">Werbungskosten</p>
+              <p className="text-lg font-bold" style={{ color: '#2e6b52' }}>{euro(analyse.ergebnis?.werbungskosten_gesamt || 0)}</p>
+            </div>
+          </div>
+
+          {/* Werbungskosten Detail */}
+          {analyse.werbungskosten?.length > 0 && (
+            <div className="card space-y-3">
+              <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide">Werbungskosten im Detail</p>
+              {analyse.werbungskosten.map((w: any, i: number) => (
+                <div key={i} className="flex items-start justify-between gap-3 pb-3 border-b border-navy-50 last:border-0 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-navy-800">{w.kategorie}</p>
+                    <p className="text-xs text-navy-400 mt-0.5">{w.erklaerung}</p>
+                  </div>
+                  <p className="text-sm font-bold shrink-0" style={{ color: '#2e6b52' }}>{euro(w.betrag)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Instandhaltung sofort absetzbar */}
+          {analyse.instandhaltung_sofort?.length > 0 && (
+            <div className="card space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: '#2e6b52' }}>
+                <Check size={13} /> Sofort absetzbar (Erhaltungsaufwand)
+              </p>
+              {analyse.instandhaltung_sofort.map((m: any, i: number) => (
+                <div key={i} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2" style={{ background: '#edf7f2' }}>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-navy-800">{m.beschreibung}</p>
+                    <p className="text-xs text-navy-400">{m.begruendung}</p>
+                  </div>
+                  <p className="text-sm font-bold shrink-0" style={{ color: '#2e6b52' }}>{euro(m.betrag)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Instandhaltung verteilt */}
+          {analyse.instandhaltung_verteilt?.length > 0 && (
+            <div className="card space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: '#b45309' }}>
+                <Calendar size={13} /> Über mehrere Jahre zu verteilen (Herstellungsaufwand)
+              </p>
+              {analyse.instandhaltung_verteilt.map((m: any, i: number) => (
+                <div key={i} className="rounded-lg px-3 py-2.5 space-y-1" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
+                  <div className="flex justify-between">
+                    <p className="text-xs font-semibold text-navy-800">{m.beschreibung}</p>
+                    <p className="text-sm font-bold" style={{ color: '#b45309' }}>{euro(m.betrag)}</p>
+                  </div>
+                  <p className="text-xs text-navy-500">{m.begruendung}</p>
+                  <p className="text-xs font-medium" style={{ color: '#b45309' }}>
+                    {euro(m.absetzbar_pro_jahr)} / Jahr über {m.nutzungsdauer_jahre} Jahre
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empfehlungen */}
+          {analyse.empfehlungen?.length > 0 && (
+            <div className="card space-y-2">
+              <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide">Empfehlungen</p>
+              {analyse.empfehlungen.map((e: string, i: number) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-navy-700">
+                  <span style={{ color: '#5b4fa8' }}>→</span> {e}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="text-xs text-navy-400 text-center italic">{analyse.disclaimer}</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
   const [aktiverTab, setAktiverTab] = useState('uebersicht')
@@ -1897,6 +2081,7 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
       {aktiverTab === 'instandhaltung'     && <InstandhaltungTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'wirtschaftsplaene'  && <WirtschaftsplaeneTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'steuern'           && <SteuernTab         immobilie={immobilie} onSave={onSave} />}
+      {aktiverTab === 'steuercheck'       && <SteuercheckTab     immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'dokumente'         && <DokumenteTab       immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'eigentuemerversamm' && <EigentuemerTab    immobilie={immobilie} onSave={onSave} />}
 
