@@ -496,6 +496,21 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                                   )}
                                 </div>
 
+                                {/* Versichert mit abweichendem Selbstbehalt */}
+                                {v.zusammenfassung.sonderselbstbehalte?.length > 0 && (
+                                  <div className="rounded-lg px-3 py-2.5" style={{ background: '#fff8e6', border: '1px solid #f5dfa0' }}>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#7a5000' }}>Versichert — abweichender Selbstbehalt</p>
+                                    <ul className="space-y-1">
+                                      {v.zusammenfassung.sonderselbstbehalte.map((s, i) => (
+                                        <li key={i} className="flex justify-between text-xs" style={{ color: '#7a5000' }}>
+                                          <span>{s.position}</span>
+                                          <span className="font-semibold shrink-0 ml-2">{s.selbstbehalt}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
                                 {/* Nicht versichert */}
                                 {v.zusammenfassung.ausschluesse?.length > 0 && (
                                   <div className="rounded-lg px-3 py-2.5" style={{ background: '#fdecea', border: '1px solid #f5b8b8' }}>

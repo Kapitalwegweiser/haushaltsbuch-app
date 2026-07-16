@@ -49,19 +49,26 @@ Deno.serve(async (req) => {
             },
             {
               type: 'text',
-              text: `Analysiere diese Versicherungspolice und antworte NUR mit diesem JSON-Objekt, kein Text davor oder danach.
+              text: `Analysiere diese Versicherungspolice sehr sorgfältig und antworte NUR mit diesem JSON-Objekt, kein Text davor oder danach.
+
+WICHTIGE Unterscheidung:
+- "ausschluesse": Nur Dinge die WIRKLICH NICHT versichert sind (echte Ausschlüsse)
+- "sonderselbstbehalte": Dinge die versichert sind, aber mit einem HÖHEREN oder ABWEICHENDEN Selbstbehalt als der Standard-Selbstbehalt — z.B. Feuer/Elementar mit CHF 500 obwohl Standard CHF 200 ist
+- Verwechsle diese NICHT: Feuer mit Selbstbehalt CHF 500 ist VERSICHERT, also in sonderselbstbehalte, nicht in ausschluesse
 
 Regeln:
-- Bei mehreren Deckungen (z.B. Hausrat + Haftpflicht): summen und selbstbehalte als Array mit je {label, wert}
-- ausschluesse: max. 4 Punkte, jeder max. 6 Wörter, nur das Wesentliche
-- faelligkeit, kuendigung, hinweis: jeweils ein kurzer Satz oder leer
+- Bei mehreren Deckungen: summen und selbstbehalte als Array mit {label, wert}
+- ausschluesse: max. 4 Punkte, max. 6 Wörter pro Punkt
+- sonderselbstbehalte: Array mit {position, selbstbehalt} z.B. {"position": "Feuer/Elementar", "selbstbehalt": "CHF 500"}
+- faelligkeit, kuendigung, hinweis: je ein kurzer Satz oder leer
 
 {
   "deckung": "Ein Satz: was ist versichert",
   "summen": [{"label": "Hausrat", "wert": "67.000 CHF"}, {"label": "Haftpflicht", "wert": "5 Mio. CHF"}],
   "praemie": "406.61 CHF / Jahr",
   "selbstbehalte": [{"label": "Hausrat", "wert": "CHF 200"}, {"label": "Haftpflicht", "wert": "CHF 200"}],
-  "ausschluesse": ["Vorsätzliche Schäden", "Krieg und Kernenergie", "Betriebs- und Berufshaftpflicht"],
+  "sonderselbstbehalte": [{"position": "Feuer/Elementar", "selbstbehalt": "CHF 500"}, {"position": "Einfacher Diebstahl auswärts", "selbstbehalt": "CHF 500"}],
+  "ausschluesse": ["Vorsätzliche Schäden", "Krieg und Kernenergie"],
   "faelligkeit": "Jährlich, Fälligkeit 01.01.",
   "kuendigung": "3 Monate vor Ende des Versicherungsjahres",
   "hinweis": "Sonstiger wichtiger Hinweis oder leer"
