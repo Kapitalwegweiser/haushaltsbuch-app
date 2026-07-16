@@ -49,14 +49,15 @@ Deno.serve(async (req) => {
             },
             {
               type: 'text',
-              text: `Analysiere diese Versicherungspolice und antworte NUR mit einem JSON-Objekt, kein Text davor oder danach:
+              text: `Analysiere diese Versicherungspolice sorgfältig und antworte NUR mit einem JSON-Objekt, kein Text davor oder danach. Falls die Police mehrere Deckungsarten enthält (z.B. Hausrat + Haftpflicht), führe Versicherungssumme und Selbstbehalt für jede separat auf.
+
 {
-  "deckung": "Was genau ist versichert – ein kurzer Satz",
-  "summe": "Versicherungssumme z.B. '5 Mio. CHF' oder leer wenn nicht gefunden",
+  "deckung": "Was genau ist versichert – ein präziser Satz mit allen enthaltenen Deckungen",
+  "summe": "Versicherungssumme(n) – bei mehreren Deckungen je separat z.B. 'Hausrat: 67.000 CHF · Haftpflicht: 5 Mio. CHF'",
   "praemie": "Jahresprämie laut Dokument z.B. '406 CHF / Jahr' oder leer wenn nicht gefunden",
-  "selbstbehalt": "Selbstbehalt z.B. '200 CHF' oder leer wenn nicht gefunden",
-  "ausschluesse": ["Ausschluss 1", "Ausschluss 2", "Ausschluss 3"],
-  "hinweis": "Sonstiger wichtiger Hinweis in einem Satz oder leer"
+  "selbstbehalt": "Selbstbehalt(e) – bei mehreren Deckungen je separat z.B. 'Hausrat: CHF 200 · Haftpflicht: CHF 200' oder 'Kein Selbstbehalt' wenn keiner vorhanden",
+  "ausschluesse": ["Suche aktiv nach Ausschlüssen, Nicht-Leistungen oder Einschränkungen im Dokument und liste die 3-5 wichtigsten auf. Falls keine explizit genannt: typische Ausschlüsse dieser Versicherungsart angeben."],
+  "hinweis": "Wichtiger Hinweis zu Fälligkeit, Kündigungsfrist, Besonderheiten oder leer"
 }`,
             },
           ],
