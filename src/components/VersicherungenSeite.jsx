@@ -1,8 +1,27 @@
 import { useState, useRef } from 'react'
 import { Plus, X, Edit2, Shield, Heart, Car, Home, Umbrella, FileText,
          ChevronDown, ChevronUp, Trash2, Upload, ExternalLink,
-         AlertTriangle, Info } from 'lucide-react'
+         AlertTriangle, Info, Sparkles, Loader2 } from 'lucide-react'
 import { hochladenDatei, oeffneDatei, loescheDatei } from '../lib/storage'
+import { supabase } from '../lib/supabase'
+
+async function analysierePolice(pfad) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(
+    `https://ygcmfrwgailmjanoyozm.supabase.co/functions/v1/analysiere-police`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ pfad }),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Analyse fehlgeschlagen')
+  return json.zusammenfassung
+}
 
 const KATEGORIEN = [
   { id: 'kranken',      label: 'Krankenversicherung',    gruppe: 'Personenversicherungen', icon: Heart,    farbe: '#2e6b52', bg: '#edf7f2' },
@@ -175,6 +194,7 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
   const [dragOver, setDragOver]       = useState(false)
   const [hochladen, setHochladen]     = useState(false)
   const [uploadFehler, setUploadFehler] = useState('')
+  const [analysiert, setAnalysiert]   = useState(false)
   const fileRef = useRef()
 
   const gesamtJahr  = versicherungen.reduce((s, v) => s + jahresbeitrag(v), 0)
@@ -195,10 +215,20 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
 
   async function handleDatei(file) {
     if (!file) return
-    setUploadFehler(''); setHochladen(true)
+    setUploadFehler(''); setHochladen(true); setAnalysiert(false)
     try {
       const meta = await hochladenDatei(file)
-      setForm(f => ({ ...f, police: meta }))
+      setForm(f => ({ ...f, police: meta, zusammenfassung: null }))
+      // KI-Analyse nur für PDFs
+      if (meta.typ === 'application/pdf') {
+        try {
+          const zusammenfassung = await analysierePolice(meta.pfad)
+          setForm(f => ({ ...f, zusammenfassung }))
+          setAnalysiert(true)
+        } catch {
+          // Analyse-Fehler ist nicht kritisch — Police bleibt gespeichert
+        }
+      }
     } catch (err) {
       setUploadFehler('Hochladen fehlgeschlagen: ' + (err.message || err))
     } finally {
@@ -369,6 +399,19 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
                           )}
                         </div>
 
+                        {/* KI-Zusammenfassung */}
+                        {v.zusammenfassung && (
+                          <div className="rounded-xl px-3 py-2.5 space-y-1" style={{ background: '#f0eeff', border: '1px solid #c8c0f0' }}>
+                            <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
+                              <Sparkles size={11} /> KI-Zusammenfassung
+                            </p>
+                            {v.zusammenfassung.deckung && <p className="text-xs text-navy-700"><strong>Deckung:</strong> {v.zusammenfassung.deckung}</p>}
+                            {v.zusammenfassung.summe && <p className="text-xs text-navy-700"><strong>Summe:</strong> {v.zusammenfassung.summe}</p>}
+                            {v.zusammenfassung.selbstbehalt && <p className="text-xs text-navy-700"><strong>Selbstbehalt:</strong> {v.zusammenfassung.selbstbehalt}</p>}
+                            {v.zusammenfassung.hinweis && <p className="text-xs text-navy-500 italic">{v.zusammenfassung.hinweis}</p>}
+                          </div>
+                        )}
+
                         {v.notizen && (
                           <div>
                             <p className="text-xs text-navy-400 uppercase tracking-wide mb-0.5">Notizen</p>
@@ -517,12 +560,31 @@ export default function VersicherungenSeite({ versicherungen, setVersicherungen,
               <div>
                 <label className="label">Police hochladen <span className="text-navy-400 font-normal">(PDF, optional)</span></label>
                 {form.police ? (
-                  <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
-                    <FileText size={15} style={{ color: '#2e6b52' }} />
-                    <span className="text-sm text-navy-700 flex-1 truncate">{form.police.name}</span>
-                    <button type="button" onClick={policeEntfernen} className="text-navy-400 hover:text-red-500">
-                      <X size={15} />
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: '#edf7f2', border: '1px solid #c5e0d4' }}>
+                      <FileText size={15} style={{ color: '#2e6b52' }} />
+                      <span className="text-sm text-navy-700 flex-1 truncate">{form.police.name}</span>
+                      {hochladen && <Loader2 size={14} className="animate-spin text-navy-400" />}
+                      <button type="button" onClick={policeEntfernen} className="text-navy-400 hover:text-red-500">
+                        <X size={15} />
+                      </button>
+                    </div>
+                    {hochladen && (
+                      <p className="text-xs text-navy-400 flex items-center gap-1.5">
+                        <Loader2 size={11} className="animate-spin" /> KI analysiert Police…
+                      </p>
+                    )}
+                    {analysiert && form.zusammenfassung && (
+                      <div className="rounded-xl px-3 py-2.5 space-y-1" style={{ background: '#f0eeff', border: '1px solid #c8c0f0' }}>
+                        <p className="text-xs font-semibold flex items-center gap-1" style={{ color: '#5b4fa8' }}>
+                          <Sparkles size={11} /> KI-Zusammenfassung
+                        </p>
+                        {form.zusammenfassung.deckung && <p className="text-xs text-navy-700"><strong>Deckung:</strong> {form.zusammenfassung.deckung}</p>}
+                        {form.zusammenfassung.summe && <p className="text-xs text-navy-700"><strong>Summe:</strong> {form.zusammenfassung.summe}</p>}
+                        {form.zusammenfassung.selbstbehalt && <p className="text-xs text-navy-700"><strong>Selbstbehalt:</strong> {form.zusammenfassung.selbstbehalt}</p>}
+                        {form.zusammenfassung.hinweis && <p className="text-xs text-navy-500 italic">{form.zusammenfassung.hinweis}</p>}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div
