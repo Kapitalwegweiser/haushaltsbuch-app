@@ -122,7 +122,7 @@ export default function Wachstumsprognose({ einnahmen, fixkosten }) {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card flex flex-col items-center text-center gap-1.5 py-4">
           <PiggyBank size={18} className="text-navy-400" />
           <p className="label mb-0 leading-tight">Eingezahlt</p>
