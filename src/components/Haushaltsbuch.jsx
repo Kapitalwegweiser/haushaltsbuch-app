@@ -40,7 +40,7 @@ export default function Haushaltsbuch({ fixkosten, variableKosten, einnahmen }) 
       </div>
 
       {/* Zusammenfassung */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="card text-center">
           <p className="text-xs text-navy-500 mb-1">Einnahmen</p>
           <p className="text-lg font-bold text-emerald-700">{euro(einnahmenSumme)}</p>

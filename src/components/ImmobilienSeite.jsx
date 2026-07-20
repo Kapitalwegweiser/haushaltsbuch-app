@@ -169,7 +169,7 @@ function TilgungsplanChart({ finanzierung }) {
       </div>
 
       {/* KPI-Karten */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="card text-center">
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Schuldenfrei in</p>
           <p className="text-base font-bold text-navy-700">{laufzeitJahre}</p>
@@ -518,7 +518,7 @@ function MietverlaufBlock({ mieter, onSpeichern }) {
 
       {formOffen && (
         <div className="rounded-xl p-3 space-y-3" style={{ background: '#faf8f4', border: '1px solid #e8dece' }}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             <div>
               <label className="label">Gültig ab</label>
               <input className="input" type="date" value={form.datum} onChange={e => setForm({ ...form, datum: e.target.value })} />
@@ -639,7 +639,7 @@ function MieterTab({ immobilie, onSave }) {
           </div>
 
           {/* Mietdaten */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-3">
             <div className="card bg-white">
               <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaltmiete {aktuell.hatStaffel && <span className="text-brand-500">· aktuell</span>}</p>
               <p className="text-base font-bold text-brand-600">{euro(aktuell.kaltmiete)}/Mo.</p>
@@ -869,7 +869,7 @@ function FinanzierungTab({ immobilie, onSave }) {
           )}
 
           {/* Darlehens-Übersicht */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             {fin0.modus === 'annuitaet' && fin0.darlehensbetrag && (
               <>
                 <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Darlehensbetrag</p><p className="text-base font-bold text-navy-700">{euro(fin0.darlehensbetrag)}</p></div>

@@ -91,7 +91,7 @@ export default function EmpfehlungSeite({ user }) {
       </div>
 
       {/* KPI-Karten */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="card text-center p-3">
           <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center mx-auto mb-2">
             <Users size={16} className="text-brand-500" />

@@ -247,7 +247,7 @@ function KiSteuercheckBox({ immobilie, filterJahr, setImmobilien }) {
 
           {/* Einnahmen vs. Werbungskosten */}
           {ergebnis && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <div className="rounded-lg px-3 py-2.5 text-center" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                 <p className="text-[10px] text-green-600 uppercase font-semibold tracking-wide mb-1">Einnahmen</p>
                 <p className="text-base font-bold text-green-700 font-serif">{euro(ergebnis.einnahmen)}</p>
@@ -548,7 +548,7 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
           ) : (
             <>
               {/* KPIs */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col gap-3">
                 <div className="card text-center">
                   <p className="label mb-2">Erhaltungsaufwend.</p>
                   <p className="text-base font-serif font-semibold text-navy-700">{euro(summeInstandhaltung)}</p>

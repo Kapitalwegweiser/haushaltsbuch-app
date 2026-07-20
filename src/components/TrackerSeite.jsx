@@ -55,7 +55,7 @@ export default function TrackerSeite({
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="card text-center" style={{ background: '#f7f3ed' }}>
           <p className="text-xs text-navy-400 uppercase tracking-widest mb-2">{titel}</p>
           <p className="text-2xl font-semibold text-navy-800">{items.length}</p>

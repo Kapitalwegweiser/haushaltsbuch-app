@@ -168,7 +168,7 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
       <h2 className="section-title mb-0">Dashboard</h2>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="card flex items-center gap-3">
           <div className="rounded-lg p-2.5 shrink-0" style={{ background: '#edf7f2' }}>
             <TrendingUp size={20} className="text-brand-500" />
