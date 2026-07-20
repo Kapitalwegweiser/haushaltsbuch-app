@@ -123,20 +123,20 @@ export default function Wachstumsprognose({ einnahmen, fixkosten }) {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="card text-center">
-          <div className="flex justify-center mb-2"><PiggyBank size={20} className="text-navy-400" /></div>
-          <p className="label mb-1">Eingezahlt</p>
-          <p className="text-base font-bold text-navy-700">{euro(endwert.eingezahlt)}</p>
+        <div className="card flex flex-col items-center text-center gap-1.5 py-4">
+          <PiggyBank size={18} className="text-navy-400" />
+          <p className="label mb-0 leading-tight">Eingezahlt</p>
+          <p className="font-bold text-navy-700 leading-tight break-all" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{euro(endwert.eingezahlt)}</p>
         </div>
-        <div className="card text-center">
-          <div className="flex justify-center mb-2"><TrendingUp size={20} className="text-brand-500" /></div>
-          <p className="label mb-1">Zinsgewinn</p>
-          <p className="text-base font-bold text-brand-600">{euro(endwert.zinsgewinn)}</p>
+        <div className="card flex flex-col items-center text-center gap-1.5 py-4">
+          <TrendingUp size={18} className="text-brand-500" />
+          <p className="label mb-0 leading-tight">Zinsgewinn</p>
+          <p className="font-bold text-brand-600 leading-tight break-all" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{euro(endwert.zinsgewinn)}</p>
         </div>
-        <div className="card text-center" style={{ borderColor: '#c9a227', borderWidth: '1.5px' }}>
-          <div className="flex justify-center mb-2"><Sparkles size={20} style={{ color: '#c9a227' }} /></div>
-          <p className="label mb-1">Endkapital</p>
-          <p className="text-base font-bold text-navy-700">{euro(endwert.mitZinseszins)}</p>
+        <div className="card flex flex-col items-center text-center gap-1.5 py-4" style={{ borderColor: '#c9a227', borderWidth: '1.5px' }}>
+          <Sparkles size={18} style={{ color: '#c9a227' }} />
+          <p className="label mb-0 leading-tight">Endkapital</p>
+          <p className="font-bold text-navy-700 leading-tight break-all" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{euro(endwert.mitZinseszins)}</p>
         </div>
       </div>
 
