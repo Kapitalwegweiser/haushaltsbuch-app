@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { useAuth } from '../context/AuthContext'
 import {
   Building2, MapPin, Maximize2, DoorOpen, Euro, Plus, ChevronLeft,
   User, Wrench, Landmark, Edit2, Trash2, Check, X, Upload, FileText,
@@ -1827,6 +1828,8 @@ function WirtschaftsplaeneTab({ immobilie, onSave }) {
 }
 
 // ─── Detailansicht ────────────────────────────────────────────────────────────
+const ADMIN_EMAIL = 'nicolai.amato@gmx.ch'
+
 const TABS = [
   { id: 'uebersicht',        label: 'Übersicht',              icon: Home },
   { id: 'dokumente',         label: 'Unterlagen zur Immobilie', icon: FileText },
@@ -1836,7 +1839,7 @@ const TABS = [
   { id: 'wirtschaftsplaene', label: 'Wirtschaftspläne',       icon: Calculator },
   { id: 'steuern',           label: 'Steuern',                icon: Euro },
   { id: 'steuercheck',       label: 'KI-Steuercheck',         icon: Sparkles },
-  { id: 'nebenkostenabr',    label: 'NK-Abrechnung',          icon: Receipt },
+  { id: 'nebenkostenabr',    label: 'NK-Abrechnung',          icon: Receipt, adminOnly: true },
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
 
@@ -2054,7 +2057,8 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
               <p className="text-[10px] font-semibold text-navy-500 uppercase tracking-widest mb-2">Nicht umlagefähig (trägt Eigentümer)</p>
               {abrechnung.nicht_umlagefaehige_positionen.map((p, i) => (
                 <p key={i} className="text-xs text-navy-500 flex items-start gap-1.5 mb-1">
-                  <span className="text-navy-300 shrink-0">—</span>{p}
+                  <span className="text-navy-300 shrink-0">—</span>
+                  {typeof p === 'string' ? p : `${p.name || ''}${p.betrag_eigentuemer ? ` (${euro(p.betrag_eigentuemer)})` : ''}`}
                 </p>
               ))}
             </div>
@@ -2263,8 +2267,9 @@ function SteuercheckTab({ immobilie, onSave }) {
   )
 }
 
-function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
+function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen, userEmail }) {
   const [aktiverTab, setAktiverTab] = useState('uebersicht')
+  const sichtbareTabs = TABS.filter(t => !t.adminOnly || userEmail === ADMIN_EMAIL)
 
   const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
   const fin = immobilie.finanzierung || {}
@@ -2302,7 +2307,7 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
       <div className="space-y-2">
         <div className="rounded-xl p-1" style={{ background: '#ede6d8' }}>
           <div className="flex gap-0.5">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {sichtbareTabs.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setAktiverTab(id)}
                 title={label}
                 className={`flex items-center justify-center rounded-lg transition-all flex-1 py-2.5
@@ -2313,7 +2318,7 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
           </div>
         </div>
         <p className="text-xs font-semibold text-navy-500 uppercase tracking-widest text-center">
-          {TABS.find(t => t.id === aktiverTab)?.label}
+          {sichtbareTabs.find(t => t.id === aktiverTab)?.label}
         </p>
       </div>
 
@@ -2486,6 +2491,7 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
 export default function ImmobilienSeite({ immobilien: immobilienProp = [], setImmobilien }) {
   const [immobilien, setLokal] = useState(immobilienProp)
   const [ansicht, setAnsicht] = useState('dashboard')
+  const { user } = useAuth()
 
   function set(neu) { setLokal(neu); if (setImmobilien) setImmobilien(neu) }
   function neuAnlegen(immo) { set([...immobilien, immo]); setAnsicht(immo.id) }
@@ -2495,6 +2501,6 @@ export default function ImmobilienSeite({ immobilien: immobilienProp = [], setIm
   const aktiveImmo = immobilien.find(i => i.id === ansicht)
 
   if (ansicht === 'neu') return <NeuFormular onSpeichern={neuAnlegen} onAbbrechen={() => setAnsicht('dashboard')} />
-  if (aktiveImmo) return <ImmobilieDetail immobilie={aktiveImmo} onSave={speichern} onZurueck={() => setAnsicht('dashboard')} onLoeschen={loeschen} />
+  if (aktiveImmo) return <ImmobilieDetail immobilie={aktiveImmo} onSave={speichern} onZurueck={() => setAnsicht('dashboard')} onLoeschen={loeschen} userEmail={user?.email} />
   return <ImmobilienDashboard immobilien={immobilien} onNeu={() => setAnsicht('neu')} onAuswaehlen={id => setAnsicht(id)} />
 }
