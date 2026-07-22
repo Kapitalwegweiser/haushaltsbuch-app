@@ -3,7 +3,7 @@ import {
   Building2, MapPin, Maximize2, DoorOpen, Euro, Plus, ChevronLeft,
   User, Wrench, Landmark, Edit2, Trash2, Check, X, Upload, FileText,
   Calendar, AlertCircle, Home, ChevronDown, ChevronUp, Calculator, TrendingDown,
-  Users, StickyNote, Download, Filter, Sparkles, Loader2, TrendingUp, Info
+  Users, StickyNote, Download, Filter, Sparkles, Loader2, TrendingUp, Info, Receipt, AlertTriangle
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import JSZip from 'jszip'
@@ -1836,8 +1836,250 @@ const TABS = [
   { id: 'wirtschaftsplaene', label: 'Wirtschaftspläne',       icon: Calculator },
   { id: 'steuern',           label: 'Steuern',                icon: Euro },
   { id: 'steuercheck',       label: 'KI-Steuercheck',         icon: Sparkles },
+  { id: 'nebenkostenabr',    label: 'NK-Abrechnung',          icon: Receipt },
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
+
+// ─── Nebenkostenabrechnung Tab ─────────────────────────────────────────────────
+function NebenkostenabrechnungTab({ immobilie, onSave }) {
+  const aktuellesJahr = new Date().getFullYear()
+  const [jahr, setJahr] = useState(String(aktuellesJahr - 1))
+  const [ausgewaehlteMieterId, setAusgewaehlteMieterId] = useState(
+    (immobilie.mieter || []).find(m => !m.mietende || new Date(m.mietende) >= new Date())?.id || ''
+  )
+  const [pfad, setPfad] = useState('')
+  const [laedt, setLaedt] = useState(false)
+  const [fehler, setFehler] = useState(null)
+  const [abrechnung, setAbrechnung] = useState(null)
+  const fileRef = useRef(null)
+
+  const mieterListe = (immobilie.mieter || [])
+  const mieter = mieterListe.find(m => m.id === ausgewaehlteMieterId)
+  const grundsteuer = (immobilie.steuern || []).find(s => String(s.steuerjahr) === jahr)
+
+  // Wirtschaftspläne mit hochgeladener Jahresabrechnung
+  const jahresabrechnungen = (immobilie.wirtschaftsplaene || []).filter(w => w.dokument?.pfad)
+
+  async function uploadUndAnalysieren(file) {
+    setLaedt(true); setFehler(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+      const dateiPfad = `${userId}/${Date.now()}-${file.name}`
+      const { error: upErr } = await supabase.storage.from('dokumente').upload(dateiPfad, file)
+      if (upErr) throw new Error(upErr.message)
+      await analysieren(dateiPfad)
+    } catch (e) { setFehler(e.message); setLaedt(false) }
+  }
+
+  async function analysieren(dokumentPfad) {
+    setLaedt(true); setFehler(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        'https://ygcmfrwgailmjanoyozm.supabase.co/functions/v1/nebenkostenabrechnung',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({
+            pfad: dokumentPfad,
+            mieter: mieter || {},
+            grundsteuer_betrag: Number(grundsteuer?.betrag) || 0,
+            abrechnungsjahr: Number(jahr),
+            wohnflaeche_mieter: Number(immobilie.flaeche) || null,
+          }),
+        }
+      )
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Fehler')
+      setAbrechnung(json.abrechnung)
+    } catch (e) { setFehler(e.message) }
+    finally { setLaedt(false) }
+  }
+
+  const euro = (n) => Number(n).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="font-serif text-lg font-semibold text-navy-700">NK-Abrechnung erstellen</h3>
+        <p className="text-xs text-navy-400 mt-0.5">KI liest die WEG-Jahresabrechnung und berechnet den Mieteranteil inkl. Grundsteuer</p>
+      </div>
+
+      {/* Einstellungen */}
+      <div className="card space-y-4">
+        <div>
+          <label className="label">Abrechnungsjahr</label>
+          <select className="input max-w-xs" value={jahr} onChange={e => { setJahr(e.target.value); setAbrechnung(null) }}>
+            {Array.from({ length: 6 }, (_, i) => aktuellesJahr - 1 - i).map(j => (
+              <option key={j} value={j}>{j}</option>
+            ))}
+          </select>
+        </div>
+
+        {mieterListe.length > 0 && (
+          <div>
+            <label className="label">Mieter</label>
+            <select className="input" value={ausgewaehlteMieterId} onChange={e => setAusgewaehlteMieterId(e.target.value)}>
+              {mieterListe.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            {mieter && (
+              <p className="text-xs text-navy-400 mt-1">
+                NK-Vorauszahlung: {euro((Number(mieter.nebenkosten) || 0) * 12)} / Jahr
+              </p>
+            )}
+          </div>
+        )}
+
+        <div>
+          <label className="label">Grundsteuer {jahr}</label>
+          {grundsteuer
+            ? <p className="text-sm text-navy-700 font-medium">{euro(grundsteuer.betrag)} — wird automatisch einbezogen ✓</p>
+            : <p className="text-xs text-amber-600">Noch nicht eingetragen — bitte unter „Steuern" ergänzen für vollständige Abrechnung</p>
+          }
+        </div>
+
+        {/* WEG-Jahresabrechnung wählen */}
+        <div>
+          <label className="label">WEG-Jahresabrechnung (PDF)</label>
+          {jahresabrechnungen.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {jahresabrechnungen.map(w => (
+                <button
+                  key={w.id}
+                  onClick={() => { setPfad(w.dokument.pfad); setAbrechnung(null) }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left border transition-all ${pfad === w.dokument.pfad ? 'border-brand-500 bg-brand-500/5 text-brand-700' : 'border-navy-100 hover:border-navy-200 text-navy-600'}`}
+                >
+                  <FileText size={13} />
+                  <span>{w.dokument._fileName || w.dokument.pfad?.split('/').pop()}</span>
+                  <span className="ml-auto text-navy-400">{w.jahr}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border border-dashed border-navy-200 text-navy-500 hover:border-brand-500 hover:text-brand-600 transition-all"
+          >
+            <Upload size={13} /> Neue Jahresabrechnung hochladen
+          </button>
+          <input ref={fileRef} type="file" accept="application/pdf" className="hidden"
+            onChange={e => { if (e.target.files?.[0]) uploadUndAnalysieren(e.target.files[0]) }} />
+        </div>
+
+        {pfad && !laedt && (
+          <button
+            onClick={() => analysieren(pfad)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white w-full justify-center"
+            style={{ background: '#2e6b52' }}
+          >
+            <Receipt size={15} /> Abrechnung für {mieter?.name || 'Mieter'} erstellen
+          </button>
+        )}
+
+        {laedt && (
+          <div className="flex items-center gap-2 text-sm text-navy-500 justify-center py-2">
+            <Loader2 size={16} className="animate-spin" /> KI analysiert Jahresabrechnung…
+          </div>
+        )}
+
+        {fehler && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-xs text-red-700">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5" /> {fehler}
+          </div>
+        )}
+      </div>
+
+      {/* Ergebnis */}
+      {abrechnung && (
+        <div className="space-y-4">
+          {/* Saldo-Banner */}
+          <div className={`rounded-xl px-4 py-4 flex items-center justify-between ${abrechnung.ist_nachzahlung ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: abrechnung.ist_nachzahlung ? '#dc2626' : '#16a34a' }}>
+                {abrechnung.ist_nachzahlung ? 'Nachzahlung fällig' : 'Guthaben für Mieter'}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: abrechnung.ist_nachzahlung ? '#7f1d1d' : '#166534' }}>
+                Abrechnung {abrechnung.abrechnungsjahr} · {abrechnung.mieter_name} · {abrechnung.objekt}
+              </p>
+            </div>
+            <p className="text-2xl font-bold font-serif" style={{ color: abrechnung.ist_nachzahlung ? '#dc2626' : '#16a34a' }}>
+              {euro(Math.abs(abrechnung.saldo))}
+            </p>
+          </div>
+
+          {/* KPIs */}
+          <div className="flex flex-col gap-3">
+            <div className="card text-center py-3">
+              <p className="label mb-1">Umlagefähige Kosten gesamt</p>
+              <p className="text-lg font-bold text-navy-700 font-serif">{euro(abrechnung.summe_umlagefaehig_gesamt)}</p>
+            </div>
+            <div className="card text-center py-3">
+              <p className="label mb-1">Anteil {abrechnung.mieter_name} ({abrechnung.anteil_prozent}%)</p>
+              <p className="text-lg font-bold text-navy-700 font-serif">{euro(abrechnung.anteil_mieter_gesamt)}</p>
+            </div>
+            <div className="card text-center py-3">
+              <p className="label mb-1">Vorauszahlungen geleistet</p>
+              <p className="text-lg font-bold text-brand-600 font-serif">{euro(abrechnung.vorauszahlungen)}</p>
+            </div>
+          </div>
+
+          {/* Kostenpositionen */}
+          <div className="card p-0 overflow-hidden">
+            <div className="px-4 py-2.5 border-b" style={{ background: '#f7f3ed', borderColor: '#e8dece' }}>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-3 text-[10px] text-navy-400 uppercase tracking-widest font-semibold">
+                <span>Position</span><span className="text-right">Gesamt</span><span className="text-right">Ihr Anteil</span>
+              </div>
+            </div>
+            {(abrechnung.positionen || []).filter(p => p.umlagefaehig).map((p, i, arr) => (
+              <div key={i} className={`px-4 py-3 grid grid-cols-[1fr_auto_auto] gap-3 items-start ${i < arr.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#f0e8dc' }}>
+                <div>
+                  <p className="text-xs font-medium text-navy-700">{p.name}</p>
+                  {p.hinweis && <p className="text-[10px] text-navy-400 mt-0.5">{p.hinweis}</p>}
+                </div>
+                <p className="text-xs text-navy-500 text-right shrink-0">{euro(p.gesamtbetrag)}</p>
+                <p className="text-xs font-semibold text-navy-700 text-right shrink-0">{euro(p.anteil_mieter)}</p>
+              </div>
+            ))}
+            <div className="px-4 py-3 grid grid-cols-[1fr_auto_auto] gap-3 border-t font-semibold" style={{ background: '#f7f3ed', borderColor: '#d8ccba' }}>
+              <span className="text-sm text-navy-600">Summe umlagefähig</span>
+              <span className="text-sm text-navy-700 text-right">{euro(abrechnung.summe_umlagefaehig_gesamt)}</span>
+              <span className="text-sm text-navy-700 text-right">{euro(abrechnung.anteil_mieter_gesamt)}</span>
+            </div>
+          </div>
+
+          {/* Nicht umlagefähig */}
+          {abrechnung.nicht_umlagefaehige_positionen?.length > 0 && (
+            <div className="rounded-xl px-4 py-3" style={{ background: '#f7f3ed', border: '1px solid #e8dece' }}>
+              <p className="text-[10px] font-semibold text-navy-500 uppercase tracking-widest mb-2">Nicht umlagefähig (trägt Eigentümer)</p>
+              {abrechnung.nicht_umlagefaehige_positionen.map((p, i) => (
+                <p key={i} className="text-xs text-navy-500 flex items-start gap-1.5 mb-1">
+                  <span className="text-navy-300 shrink-0">—</span>{p}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Hinweise */}
+          {abrechnung.hinweise?.length > 0 && (
+            <div className="rounded-xl px-4 py-3 space-y-1.5" style={{ background: '#fef9ed', border: '1px solid #fde68a' }}>
+              <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-widest mb-1">Hinweise</p>
+              {abrechnung.hinweise.map((h, i) => (
+                <p key={i} className="text-xs text-amber-800 flex items-start gap-1.5">
+                  <Info size={11} className="shrink-0 mt-0.5" />{h}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <p className="text-[10px] text-navy-400 italic text-center">
+            Diese Abrechnung wurde KI-gestützt erstellt und dient als Entwurf. Bitte vor dem Versand prüfen.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─── KI-Steuercheck Tab ───────────────────────────────────────────────────────
 function SteuercheckTab({ immobilie, onSave }) {
@@ -2081,7 +2323,8 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen }) {
       {aktiverTab === 'instandhaltung'     && <InstandhaltungTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'wirtschaftsplaene'  && <WirtschaftsplaeneTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'steuern'           && <SteuernTab         immobilie={immobilie} onSave={onSave} />}
-      {aktiverTab === 'steuercheck'       && <SteuercheckTab     immobilie={immobilie} onSave={onSave} />}
+      {aktiverTab === 'steuercheck'       && <SteuercheckTab             immobilie={immobilie} onSave={onSave} />}
+      {aktiverTab === 'nebenkostenabr'   && <NebenkostenabrechnungTab   immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'dokumente'         && <DokumenteTab       immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'eigentuemerversamm' && <EigentuemerTab    immobilie={immobilie} onSave={onSave} />}
 
