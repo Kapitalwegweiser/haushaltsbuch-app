@@ -400,7 +400,8 @@ function UebersichtTab({ immobilie, onSave }) {
 // ─── Mieter-Tab ───────────────────────────────────────────────────────────────
 const LEER_MIETER = {
   id: null, name: '', telefon: '', mietbeginn: '', mietende: '',
-  kaltmiete: '', nebenkosten: '', kaution: '', dokument: null
+  kaltmiete: '', nebenkosten: '', kaution: '', dokument: null,
+  mwst_aktiv: false, mwst_satz: 19,
 }
 
 function MieterFormular({ initial = LEER_MIETER, onSpeichern, onAbbrechen, titel }) {
@@ -439,14 +440,54 @@ function MieterFormular({ initial = LEER_MIETER, onSpeichern, onAbbrechen, titel
           <label className="label">Kaution (€)</label>
           <input className="input" type="number" value={form.kaution} onChange={e => setForm({ ...form, kaution: e.target.value })} placeholder="0" />
         </div>
-        {form.kaltmiete && form.nebenkosten && (
+        {(form.kaltmiete || form.nebenkosten) && (
           <div className="flex items-center rounded-xl px-3 py-2" style={{ background: '#edf7f2', border: '1px solid #c0dfd3' }}>
             <div>
-              <p className="text-xs text-brand-600 font-medium">Warmmiete gesamt</p>
+              <p className="text-xs text-brand-600 font-medium">Warmmiete (Netto)</p>
               <p className="text-base font-bold text-brand-700">{euro(+form.kaltmiete + +form.nebenkosten)}/Mo.</p>
             </div>
           </div>
         )}
+        {/* MwSt-Option */}
+        <div className="sm:col-span-2">
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: '#faf8f4', border: '1px solid #e8dece' }}>
+            <input
+              id="mwst_toggle"
+              type="checkbox"
+              checked={!!form.mwst_aktiv}
+              onChange={e => setForm({ ...form, mwst_aktiv: e.target.checked })}
+              className="w-4 h-4 accent-brand-600 shrink-0"
+            />
+            <label htmlFor="mwst_toggle" className="text-sm font-medium text-navy-700 cursor-pointer flex-1">
+              Miete zzgl. Mehrwertsteuer (§9 UStG — Gewerbe)
+            </label>
+            {form.mwst_aktiv && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <input
+                  type="number"
+                  value={form.mwst_satz}
+                  onChange={e => setForm({ ...form, mwst_satz: +e.target.value })}
+                  className="input w-16 text-center py-1 text-sm"
+                  min="0" max="30"
+                />
+                <span className="text-sm text-navy-500">%</span>
+              </div>
+            )}
+          </div>
+          {form.mwst_aktiv && (form.kaltmiete || form.nebenkosten) && (
+            <div className="mt-2 rounded-xl px-4 py-3 space-y-1 text-sm" style={{ background: '#fff9ed', border: '1px solid #fde68a' }}>
+              {(() => {
+                const netto = +form.kaltmiete + +form.nebenkosten
+                const mwst = netto * (form.mwst_satz / 100)
+                return <>
+                  <div className="flex justify-between text-navy-500"><span>Netto</span><span>{euro(netto)}/Mo.</span></div>
+                  <div className="flex justify-between text-amber-700"><span>MwSt. {form.mwst_satz}%</span><span>+ {euro(mwst)}/Mo.</span></div>
+                  <div className="flex justify-between font-bold text-navy-700 border-t pt-1" style={{ borderColor: '#fde68a' }}><span>Brutto (Zahlbetrag)</span><span>{euro(netto + mwst)}/Mo.</span></div>
+                </>
+              })()}
+            </div>
+          )}
+        </div>
       </div>
       <DokumentUpload label="Mietvertrag hochladen" dokument={form.dokument} onChange={dok => setForm({ ...form, dokument: dok })} />
       <div className="flex gap-2">
@@ -642,19 +683,31 @@ function MieterTab({ immobilie, onSave }) {
           {/* Mietdaten */}
           <div className="flex flex-col gap-3">
             <div className="card bg-white">
-              <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaltmiete {aktuell.hatStaffel && <span className="text-brand-500">· aktuell</span>}</p>
+              <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaltmiete {aktuell.hatStaffel && <span className="text-brand-500">· aktuell</span>}{m.mwst_aktiv && <span className="text-amber-600"> · Netto</span>}</p>
               <p className="text-base font-bold text-brand-600">{euro(aktuell.kaltmiete)}/Mo.</p>
             </div>
             <div className="card bg-white">
-              <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Nebenkosten</p>
+              <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Nebenkosten{m.mwst_aktiv && <span className="text-amber-600"> · Netto</span>}</p>
               <p className="text-base font-bold text-navy-700">{euro(aktuell.nebenkosten)}/Mo.</p>
             </div>
-            {(aktuell.kaltmiete || aktuell.nebenkosten) && (
-              <div className="card col-span-2 sm:col-span-1" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
-                <p className="label mb-1">Warmmiete</p>
-                <p className="text-base font-bold text-brand-600">{euro(aktuell.kaltmiete + aktuell.nebenkosten)}/Mo.</p>
-              </div>
-            )}
+            {(aktuell.kaltmiete || aktuell.nebenkosten) && (() => {
+              const netto = aktuell.kaltmiete + aktuell.nebenkosten
+              const mwst = m.mwst_aktiv ? netto * ((m.mwst_satz || 19) / 100) : 0
+              return <>
+                {m.mwst_aktiv && (
+                  <div className="card bg-white" style={{ borderLeftWidth: '3px', borderLeftColor: '#d97706' }}>
+                    <p className="text-xs text-amber-700 uppercase tracking-widest mb-1">MwSt. {m.mwst_satz || 19}% (§9 UStG)</p>
+                    <p className="text-base font-bold text-amber-700">+ {euro(mwst)}/Mo.</p>
+                    <p className="text-[10px] text-amber-600 mt-0.5">Durchlaufender Posten — ans Finanzamt abzuführen</p>
+                  </div>
+                )}
+                <div className="card col-span-2 sm:col-span-1" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
+                  <p className="label mb-1">{m.mwst_aktiv ? 'Warmmiete Brutto (Zahlbetrag)' : 'Warmmiete'}</p>
+                  <p className="text-base font-bold text-brand-600">{euro(netto + mwst)}/Mo.</p>
+                  {m.mwst_aktiv && <p className="text-[10px] text-navy-400 mt-0.5">Netto {euro(netto)} + MwSt. {euro(mwst)}</p>}
+                </div>
+              </>
+            })()}
             {m.kaution && (
               <div className="card bg-white">
                 <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaution</p>
@@ -826,10 +879,13 @@ function FinanzierungTab({ immobilie, onSave }) {
   // Aktiver Mieter für Cashflow — Kaltmiete inkl. evtl. Staffelmiete/Mieterhöhung
   const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
   const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
+  // MwSt ist durchlaufender Posten → Cashflow immer auf Netto-Basis
   const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
   const gesamtBelastung = monatlicheZinsen + monatlicheTilgung + (+(fin0.hausgeld || form.hausgeld) || 0)
   const cashflow = warmmiete - gesamtBelastung
   const hatCashflow = warmmiete > 0 || gesamtBelastung > 0
+  const mwstAktiv = aktiverMieter?.mwst_aktiv
+  const mwstSatz = aktiverMieter?.mwst_satz || 19
 
   const hatDaten = fin0.zinssatz || fin0.zinsen || fin0.hausgeld
 
@@ -845,13 +901,19 @@ function FinanzierungTab({ immobilie, onSave }) {
                 {warmmiete > 0 && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-navy-400">Kaltmiete</span>
+                      <span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''}</span>
                       <span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte?.kaltmiete || 0)}</span>
                     </div>
                     {aktiveMietwerte?.nebenkosten > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-navy-400">Nebenkosten</span>
+                        <span className="text-navy-400">Nebenkosten{mwstAktiv ? ' (Netto)' : ''}</span>
                         <span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte.nebenkosten)}</span>
+                      </div>
+                    )}
+                    {mwstAktiv && (
+                      <div className="flex justify-between text-amber-600 text-xs">
+                        <span>MwSt. {mwstSatz}% (durchlaufend)</span>
+                        <span>+ {euro(warmmiete * mwstSatz / 100)} → Finanzamt</span>
                       </div>
                     )}
                   </>
@@ -2416,10 +2478,12 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
             const monatlicheZinsen = fin.modus === 'annuitaet' && fin.darlehensbetrag && fin.zinssatz
               ? (+fin.darlehensbetrag * +fin.zinssatz / 100 / 12) : (+fin.zinsen || 0)
             const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
+            // Cashflow immer auf Netto-Basis (MwSt ist durchlaufender Posten)
             const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
             const monatlicheTilgung = fin.modus === 'annuitaet' && fin._annRate
               ? fin._annRate - monatlicheZinsen : (+fin.tilgung || 0)
             const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - (+fin.hausgeld || 0)
+            const immoMwstAktiv = aktiverMieter?.mwst_aktiv
             const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
             const hatAktiv = !!aktiverMieter
 
@@ -2447,7 +2511,7 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
                   <div className="border-t border-navy-50 pt-3 mt-3 space-y-1">
                     {warmmiete > 0 && (
                       <div className="flex justify-between text-xs">
-                        <span className="text-navy-400">Warmmiete</span>
+                        <span className="text-navy-400">Warmmiete{immoMwstAktiv ? ' (Netto)' : ''}</span>
                         <span className="text-brand-600 font-medium">+ {euro(warmmiete)}</span>
                       </div>
                     )}
