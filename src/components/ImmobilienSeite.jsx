@@ -1913,178 +1913,120 @@ const TABS = [
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
 
-// ─── PDF-Generierung NK-Abrechnung (DIN 5008 Geschäftsbrief) ───────────────────
+// ─── PDF-Generierung NK-Abrechnung (DIN 5008, einseitig optimiert) ─────────────
 function generiereNkPdf(abrechnung, immobilie) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const fmt = (n) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
-  const W = 210
-  const ML = 25   // linker Rand (DIN 5008)
-  const MR = 190  // rechter Rand
-  const TW = MR - ML
+  const W = 210, ML = 20, MR = 193, TW = MR - ML
 
   const istNach = abrechnung.ist_nachzahlung
   const positionen = (abrechnung.positionen || []).filter(p => p.umlagefaehig && Number(p.anteil_mieter) > 0)
-
-  // ── Absenderzeile (klein, über dem Adressfenster) ──
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
-  doc.setTextColor(100, 100, 100)
-  const absender = [immobilie?.adresse, immobilie?.name].filter(Boolean).join(' · ')
-  doc.text(absender || 'Eigentümer · Objekt', ML, 27)
-  doc.setDrawColor(180, 180, 180)
-  doc.line(ML, 28.5, MR, 28.5)
-
-  // ── Empfängeranschrift (DIN-5008-Fenster: 20–65mm von oben, 25mm links) ──
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.setTextColor(30, 30, 30)
-  doc.text(abrechnung.mieter_name || 'Mieter', ML, 40)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  // Adresse aus Objekt ableiten (Straße aus Dokument oder Immobilien-Adresse)
   const objektAdresse = abrechnung.objekt || immobilie?.adresse || ''
-  if (objektAdresse) doc.text(objektAdresse, ML, 46)
 
-  // ── Datum + Ort rechts ──
-  doc.setFontSize(10)
-  doc.setTextColor(50, 50, 50)
-  doc.text(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), MR, 57, { align: 'right' })
+  // ── Absenderzeile ──
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(120, 120, 120)
+  doc.text(([immobilie?.name, immobilie?.adresse].filter(Boolean).join(' · ')) || 'Eigentümer', ML, 18)
+  doc.setDrawColor(190, 190, 190); doc.line(ML, 19.5, MR, 19.5)
+
+  // ── Empfänger (links) + Datum (rechts) ──
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(20, 20, 20)
+  doc.text(abrechnung.mieter_name || 'Mieter', ML, 28)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 60)
+  if (objektAdresse) doc.text(objektAdresse, ML, 33.5)
+  doc.setFontSize(9); doc.setTextColor(60, 60, 60)
+  doc.text(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), MR, 28, { align: 'right' })
 
   // ── Betreff ──
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.setTextColor(20, 20, 20)
-  doc.text(`Betriebskostenabrechnung ${abrechnung.abrechnungsjahr}`, ML, 72)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(80, 80, 80)
-  doc.text(`Mietobjekt: ${objektAdresse}`, ML, 78)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20, 20, 20)
+  doc.text(`Betriebskostenabrechnung ${abrechnung.abrechnungsjahr}`, ML, 43)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 100)
+  doc.text(`Mietobjekt: ${objektAdresse}`, ML, 48)
 
   // ── Anrede ──
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.setTextColor(30, 30, 30)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(20, 20, 20)
   const nachname = (abrechnung.mieter_name || '').split(' ').pop()
   const anredeMieter = abrechnung.mieter_anrede
   const anredeText = anredeMieter
     ? `Sehr geehrte${anredeMieter === 'Herr' ? 'r' : ''} ${anredeMieter} ${nachname},`
     : `Sehr geehrte/r ${nachname},`
-  doc.text(anredeText, ML, 90)
+  doc.text(anredeText, ML, 55)
 
-  // ── Einleitungstext ──
-  doc.setFontSize(10)
-  doc.setTextColor(40, 40, 40)
-  const intro = `hiermit erhalten Sie die Betriebskostenabrechnung für das Kalenderjahr ${abrechnung.abrechnungsjahr}. Die Abrechnung umfasst alle gemäß § 556 BGB i.V.m. der Betriebskostenverordnung (BetrKV) umlagefähigen Kosten.`
-  const introLines = doc.splitTextToSize(intro, TW)
-  doc.text(introLines, ML, 98)
+  // ── Intro (1 Zeile kompakt) ──
+  doc.setFontSize(8.5); doc.setTextColor(60, 60, 60)
+  const intro = `hiermit erhalten Sie Ihre Betriebskostenabrechnung für das Jahr ${abrechnung.abrechnungsjahr} gemäß § 556 BGB i.V.m. BetrKV.`
+  doc.text(doc.splitTextToSize(intro, TW), ML, 60.5)
 
-  let y = 98 + introLines.length * 5 + 6
+  let y = 67
 
-  // ── Tabelle: Kostenaufstellung ──
-  // Kopfzeile
-  doc.setFillColor(46, 107, 82)
-  doc.rect(ML, y, TW, 7, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
-  doc.setTextColor(255, 255, 255)
-  doc.text('Kostenposition', ML + 2, y + 4.8)
-  doc.text('Gesamtkosten', MR - 44, y + 4.8, { align: 'right' })
-  doc.text('Ihr Anteil', MR, y + 4.8, { align: 'right' })
-  y += 7
+  // ── Tabellenkopf ──
+  doc.setFillColor(46, 107, 82); doc.rect(ML, y, TW, 6.5, 'F')
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255)
+  doc.text('Kostenposition', ML + 2, y + 4.3)
+  doc.text('Gesamtkosten', MR - 38, y + 4.3, { align: 'right' })
+  doc.text('Ihr Anteil', MR, y + 4.3, { align: 'right' })
+  y += 6.5
 
-  // Zeilen
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  // ── Tabellenzeilen ──
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
   positionen.forEach((p, i) => {
-    if (y > 248) {
-      // Footer vor Seitenumbruch
-      doc.setFontSize(8); doc.setTextColor(150, 150, 150)
-      doc.text(`Betriebskostenabrechnung ${abrechnung.abrechnungsjahr} · ${abrechnung.mieter_name}`, W / 2, 290, { align: 'center' })
-      doc.addPage(); y = 25
-      // Tabellenkopf wiederholen
-      doc.setFillColor(46, 107, 82); doc.rect(ML, y, TW, 7, 'F')
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255)
-      doc.text('Kostenposition', ML + 2, y + 4.8)
-      doc.text('Gesamtkosten', MR - 44, y + 4.8, { align: 'right' })
-      doc.text('Ihr Anteil', MR, y + 4.8, { align: 'right' })
-      y += 7; doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
-    }
-    const rowH = 6.5
+    const rowH = 5.2
     if (i % 2 === 0) { doc.setFillColor(248, 246, 242); doc.rect(ML, y, TW, rowH, 'F') }
-    doc.setTextColor(30, 30, 30)
-    doc.text(p.name, ML + 2, y + 4.5)
-    doc.setTextColor(80, 80, 80)
-    doc.text(fmt(p.gesamtbetrag), MR - 44, y + 4.5, { align: 'right' })
-    doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'bold')
-    doc.text(fmt(p.anteil_mieter), MR, y + 4.5, { align: 'right' })
+    doc.setTextColor(25, 25, 25)
+    doc.text(p.name, ML + 2, y + 3.6)
+    doc.setTextColor(90, 90, 90)
+    doc.text(fmt(p.gesamtbetrag), MR - 38, y + 3.6, { align: 'right' })
+    doc.setTextColor(25, 25, 25); doc.setFont('helvetica', 'bold')
+    doc.text(fmt(p.anteil_mieter), MR, y + 3.6, { align: 'right' })
     doc.setFont('helvetica', 'normal')
-    doc.setDrawColor(230, 224, 215); doc.line(ML, y + rowH, MR, y + rowH)
+    doc.setDrawColor(232, 226, 216); doc.line(ML, y + rowH, MR, y + rowH)
     y += rowH
   })
 
-  // Summenzeile
-  doc.setFillColor(237, 230, 216)
-  doc.rect(ML, y, TW, 8, 'F')
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(30, 30, 30)
-  doc.text('Summe umlagefähige Betriebskosten', ML + 2, y + 5.5)
-  doc.text(fmt(abrechnung.anteil_mieter_gesamt), MR, y + 5.5, { align: 'right' })
-  y += 14
+  // ── Summenzeile ──
+  doc.setFillColor(237, 230, 216); doc.rect(ML, y, TW, 7, 'F')
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(25, 25, 25)
+  doc.text('Summe umlagefähige Betriebskosten', ML + 2, y + 4.8)
+  doc.text(fmt(abrechnung.anteil_mieter_gesamt), MR, y + 4.8, { align: 'right' })
+  y += 11
 
-  // ── Abrechnungsergebnis ──
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(60, 60, 60)
+  // ── Vorauszahlungen / Anteil ──
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 60)
   doc.text('Geleistete Vorauszahlungen:', ML, y)
-  doc.setFont('helvetica', 'bold'); doc.text(fmt(abrechnung.vorauszahlungen), MR, y, { align: 'right' })
-  y += 6
+  doc.setFont('helvetica', 'bold'); doc.text(fmt(abrechnung.vorauszahlungen), MR, y, { align: 'right' }); y += 5
   doc.setFont('helvetica', 'normal')
   doc.text('Tatsächliche Betriebskosten (Ihr Anteil):', ML, y)
-  doc.setFont('helvetica', 'bold'); doc.text(fmt(abrechnung.anteil_mieter_gesamt), MR, y, { align: 'right' })
-  y += 2
-  doc.setDrawColor(100, 100, 100); doc.line(ML, y, MR, y); y += 6
+  doc.setFont('helvetica', 'bold'); doc.text(fmt(abrechnung.anteil_mieter_gesamt), MR, y, { align: 'right' }); y += 2
+  doc.setDrawColor(120, 120, 120); doc.line(ML, y, MR, y); y += 5
 
-  // Ergebnis-Box
+  // ── Ergebnis-Box ──
   const boxColor = istNach ? [254, 226, 226] : [220, 252, 231]
-  const textColor = istNach ? [153, 27, 27] : [21, 128, 61]
-  doc.setFillColor(...boxColor)
-  doc.roundedRect(ML, y, TW, 12, 2, 2, 'F')
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(11)
-  doc.setTextColor(...textColor)
-  doc.text(istNach ? 'Nachzahlung fällig:' : 'Guthaben für Sie:', ML + 4, y + 8)
-  doc.setFontSize(13)
-  doc.text(fmt(Math.abs(abrechnung.saldo)), MR - 3, y + 8, { align: 'right' })
-  y += 18
+  const saldoColor = istNach ? [153, 27, 27] : [21, 128, 61]
+  doc.setFillColor(...boxColor); doc.roundedRect(ML, y, TW, 10, 2, 2, 'F')
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...saldoColor)
+  doc.text(istNach ? 'Nachzahlung fällig:' : 'Guthaben für Sie:', ML + 3, y + 6.8)
+  doc.setFontSize(12); doc.text(fmt(Math.abs(abrechnung.saldo)), MR - 2, y + 6.8, { align: 'right' })
+  y += 14
 
-  // Zahlungshinweis
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(40, 40, 40)
-  if (istNach) {
-    const zahlText = `Bitte überweisen Sie den Nachzahlungsbetrag von ${fmt(Math.abs(abrechnung.saldo))} innerhalb von 30 Tagen auf das Ihnen bekannte Konto.`
-    const zahlLines = doc.splitTextToSize(zahlText, TW)
-    doc.text(zahlLines, ML, y); y += zahlLines.length * 5 + 4
-  } else {
-    const zahlText = `Das Guthaben von ${fmt(Math.abs(abrechnung.saldo))} wird Ihnen innerhalb von 30 Tagen zurückerstattet bzw. mit der nächsten Mietzahlung verrechnet.`
-    const zahlLines = doc.splitTextToSize(zahlText, TW)
-    doc.text(zahlLines, ML, y); y += zahlLines.length * 5 + 4
-  }
+  // ── Zahlungshinweis ──
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(50, 50, 50)
+  const zahlText = istNach
+    ? `Bitte überweisen Sie ${fmt(Math.abs(abrechnung.saldo))} innerhalb von 30 Tagen auf das Ihnen bekannte Konto.`
+    : `Das Guthaben von ${fmt(Math.abs(abrechnung.saldo))} wird Ihnen innerhalb von 30 Tagen zurückerstattet bzw. mit der nächsten Mietzahlung verrechnet.`
+  doc.text(doc.splitTextToSize(zahlText, TW), ML, y); y += 10
 
-  // ── Grußformel ──
-  if (y > 250) { doc.addPage(); y = 25 }
-  y += 4
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(30, 30, 30)
-  doc.text('Mit freundlichen Grüßen', ML, y); y += 14
-  doc.setDrawColor(150, 150, 150); doc.line(ML, y, ML + 60, y); y += 4
-  doc.setFontSize(9); doc.setTextColor(80, 80, 80)
-  doc.text(immobilie?.name || 'Eigentümer', ML, y); y += 4
+  // ── Grußformel + Unterschrift ──
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(20, 20, 20)
+  doc.text('Mit freundlichen Grüßen', ML, y); y += 12
+  doc.setDrawColor(160, 160, 160); doc.line(ML, y, ML + 55, y); y += 4
+  doc.setFontSize(8); doc.setTextColor(90, 90, 90)
+  doc.text(immobilie?.name || 'Eigentümer', ML, y); y += 3.5
   if (immobilie?.adresse) doc.text(immobilie.adresse, ML, y)
 
-  // ── Footer (alle Seiten) ──
-  const pageCount = doc.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setDrawColor(200, 195, 185)
-    doc.line(ML, 284, MR, 284)
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 150)
-    doc.text(`Betriebskostenabrechnung ${abrechnung.abrechnungsjahr} · ${abrechnung.mieter_name}`, ML, 289)
-    doc.text(`Seite ${i} von ${pageCount}`, MR, 289, { align: 'right' })
-  }
+  // ── Footer ──
+  doc.setDrawColor(210, 205, 195); doc.line(ML, 287, MR, 287)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(160, 160, 160)
+  doc.text(`Betriebskostenabrechnung ${abrechnung.abrechnungsjahr} · ${abrechnung.mieter_name}`, ML, 291)
+  doc.text('Seite 1 von 1', MR, 291, { align: 'right' })
 
   return doc
 }
