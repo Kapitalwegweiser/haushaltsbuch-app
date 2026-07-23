@@ -2065,18 +2065,6 @@ function generiereNkPdf(abrechnung, immobilie) {
     doc.text(zahlLines, ML, y); y += zahlLines.length * 5 + 4
   }
 
-  // Hinweise
-  if (abrechnung.hinweise?.length > 0) {
-    y += 2
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(100, 90, 70)
-    abrechnung.hinweise.forEach(h => {
-      if (y > 265) { doc.addPage(); y = 25 }
-      const lines = doc.splitTextToSize(`• ${h}`, TW)
-      doc.text(lines, ML, y); y += lines.length * 4.5
-    })
-    y += 3
-  }
-
   // ── Grußformel ──
   if (y > 250) { doc.addPage(); y = 25 }
   y += 4
