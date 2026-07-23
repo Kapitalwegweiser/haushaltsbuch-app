@@ -2095,7 +2095,7 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
                 <span>Position</span><span className="text-right">Gesamt</span><span className="text-right">Ihr Anteil</span>
               </div>
             </div>
-            {(abrechnung.positionen || []).filter(p => p.umlagefaehig).map((p, i, arr) => (
+            {(abrechnung.positionen || []).filter(p => p.umlagefaehig && p.anteil_mieter > 0).map((p, i, arr) => (
               <div key={i} className={`px-4 py-3 grid grid-cols-[1fr_auto_auto] gap-3 items-start ${i < arr.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#f0e8dc' }}>
                 <div>
                   <p className="text-xs font-medium text-navy-700">{p.name}</p>
