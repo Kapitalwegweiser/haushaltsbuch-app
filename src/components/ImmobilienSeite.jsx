@@ -400,7 +400,7 @@ function UebersichtTab({ immobilie, onSave }) {
 
 // ─── Mieter-Tab ───────────────────────────────────────────────────────────────
 const LEER_MIETER = {
-  id: null, name: '', telefon: '', mietbeginn: '', mietende: '',
+  id: null, anrede: '', name: '', telefon: '', mietbeginn: '', mietende: '',
   kaltmiete: '', nebenkosten: '', kaution: '', dokument: null,
   mwst_aktiv: false, mwst_satz: 19,
 }
@@ -412,7 +412,15 @@ function MieterFormular({ initial = LEER_MIETER, onSpeichern, onAbbrechen, titel
     <div className="card border-emerald-200 space-y-4">
       <h3 className="font-serif text-lg font-semibold text-navy-700">{titel}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2">
+        <div>
+          <label className="label">Anrede</label>
+          <select className="input" value={form.anrede} onChange={e => setForm({ ...form, anrede: e.target.value })}>
+            <option value="">— keine —</option>
+            <option value="Herr">Herr</option>
+            <option value="Frau">Frau</option>
+          </select>
+        </div>
+        <div>
           <label className="label">Vor- und Nachname</label>
           <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Max Mustermann" />
         </div>
@@ -1957,7 +1965,11 @@ function generiereNkPdf(abrechnung, immobilie) {
   doc.setFontSize(10)
   doc.setTextColor(30, 30, 30)
   const nachname = (abrechnung.mieter_name || '').split(' ').pop()
-  doc.text(`Sehr geehrte/r ${nachname},`, ML, 90)
+  const anredeMieter = abrechnung.mieter_anrede
+  const anredeText = anredeMieter
+    ? `Sehr geehrte${anredeMieter === 'Herr' ? 'r' : ''} ${anredeMieter} ${nachname},`
+    : `Sehr geehrte/r ${nachname},`
+  doc.text(anredeText, ML, 90)
 
   // ── Einleitungstext ──
   doc.setFontSize(10)
@@ -2147,7 +2159,7 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
       )
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Fehler')
-      const result = json.abrechnung
+      const result = { ...json.abrechnung, mieter_anrede: mieter?.anrede || '' }
       setAbrechnung(result)
 
       // PDF generieren und in Supabase Storage speichern (überschreibt vorhandene)
