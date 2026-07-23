@@ -1917,11 +1917,6 @@ function generiereNkPdf(abrechnung, immobilie) {
   const istNach = abrechnung.ist_nachzahlung
   const positionen = (abrechnung.positionen || []).filter(p => p.umlagefaehig && Number(p.anteil_mieter) > 0)
 
-  // ── TEST MARKER ──
-  doc.setFontSize(20)
-  doc.setTextColor(255, 0, 0)
-  doc.text('NEUER BRIEFSTIL V2', 105, 15, { align: 'center' })
-
   // ── Absenderzeile (klein, über dem Adressfenster) ──
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
@@ -1961,7 +1956,8 @@ function generiereNkPdf(abrechnung, immobilie) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(30, 30, 30)
-  doc.text('Sehr geehrte Damen und Herren,', ML, 90)
+  const nachname = (abrechnung.mieter_name || '').split(' ').pop()
+  doc.text(`Sehr geehrte/r ${nachname},`, ML, 90)
 
   // ── Einleitungstext ──
   doc.setFontSize(10)
