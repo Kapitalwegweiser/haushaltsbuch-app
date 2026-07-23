@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { jsPDF } from 'jspdf'
 import {
   Building2, MapPin, Maximize2, DoorOpen, Euro, Plus, ChevronLeft,
   User, Wrench, Landmark, Edit2, Trash2, Check, X, Upload, FileText,
@@ -1904,6 +1905,105 @@ const TABS = [
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
 
+// ─── PDF-Generierung für NK-Abrechnung ─────────────────────────────────────────
+function generiereNkPdf(abrechnung) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const euro = (n) => Number(n).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+  const W = 210, L = 20, R = W - 20, TW = R - L
+
+  // Header
+  doc.setFillColor(46, 107, 82)
+  doc.rect(0, 0, W, 28, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.text('Nebenkostenabrechnung', L, 12)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`${abrechnung.abrechnungsjahr} · ${abrechnung.mieter_name} · ${abrechnung.objekt || ''}`, L, 20)
+  doc.text(`Erstellt: ${new Date().toLocaleDateString('de-DE')}`, R, 20, { align: 'right' })
+
+  // Saldo-Banner
+  const istNach = abrechnung.ist_nachzahlung
+  doc.setFillColor(istNach ? 254 : 240, istNach ? 242 : 253, istNach ? 242 : 244)
+  doc.rect(L, 34, TW, 16, 'F')
+  doc.setTextColor(istNach ? 220 : 22, istNach ? 38 : 163, istNach ? 38 : 74)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.text(istNach ? 'Nachzahlung fällig' : 'Guthaben für Mieter', L + 4, 43)
+  doc.setFontSize(14)
+  doc.text(euro(Math.abs(abrechnung.saldo)), R - 4, 43, { align: 'right' })
+
+  // Positionen
+  let y = 58
+  doc.setTextColor(100, 100, 100)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8)
+  doc.text('POSITION', L, y)
+  doc.text('GESAMT', R - 30, y, { align: 'right' })
+  doc.text('IHR ANTEIL', R, y, { align: 'right' })
+  y += 2
+  doc.setDrawColor(220, 210, 200)
+  doc.line(L, y, R, y)
+  y += 5
+
+  const positionen = (abrechnung.positionen || []).filter(p => p.umlagefaehig && Number(p.anteil_mieter) > 0)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  positionen.forEach((p, i) => {
+    if (y > 260) { doc.addPage(); y = 20 }
+    if (i % 2 === 0) { doc.setFillColor(250, 248, 244); doc.rect(L, y - 4, TW, 7, 'F') }
+    doc.setTextColor(50, 31, 19)
+    doc.text(p.name, L + 2, y)
+    doc.setTextColor(100, 100, 100)
+    doc.text(euro(p.gesamtbetrag), R - 30, y, { align: 'right' })
+    doc.setTextColor(50, 31, 19)
+    doc.setFont('helvetica', 'bold')
+    doc.text(euro(p.anteil_mieter), R, y, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    y += 7
+  })
+
+  // Summenzeile
+  doc.setFillColor(237, 230, 216)
+  doc.rect(L, y - 1, TW, 8, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(50, 31, 19)
+  doc.text('Summe umlagefähige Kosten', L + 2, y + 4)
+  doc.text(euro(abrechnung.anteil_mieter_gesamt), R, y + 4, { align: 'right' })
+  y += 14
+
+  // Abrechnung
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(80, 80, 80)
+  doc.text(`Vorauszahlungen geleistet:`, L, y); doc.setTextColor(46, 107, 82); doc.setFont('helvetica', 'bold'); doc.text(euro(abrechnung.vorauszahlungen), R, y, { align: 'right' }); y += 6
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80)
+  doc.text(`Tatsächliche Kosten (Ihr Anteil):`, L, y); doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 31, 19); doc.text(euro(abrechnung.anteil_mieter_gesamt), R, y, { align: 'right' }); y += 8
+  doc.setDrawColor(180, 160, 140); doc.line(L, y, R, y); y += 6
+  doc.setFontSize(10); doc.setTextColor(istNach ? 220 : 22, istNach ? 38 : 163, istNach ? 38 : 74)
+  doc.text(istNach ? 'Bitte überweisen:' : 'Rückerstattung:', L, y)
+  doc.setFontSize(12); doc.text(euro(Math.abs(abrechnung.saldo)), R, y, { align: 'right' }); y += 10
+
+  // Hinweise
+  if (abrechnung.hinweise?.length > 0) {
+    doc.setFontSize(8); doc.setTextColor(120, 90, 30); doc.setFont('helvetica', 'bold')
+    doc.text('Hinweise', L, y); y += 4; doc.setFont('helvetica', 'normal')
+    abrechnung.hinweise.forEach(h => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      const lines = doc.splitTextToSize(`• ${h}`, TW)
+      doc.text(lines, L, y); y += lines.length * 4 + 1
+    })
+  }
+
+  // Footer
+  doc.setFontSize(7); doc.setTextColor(160, 150, 140); doc.setFont('helvetica', 'italic')
+  doc.text('KI-gestützt erstellt · Kapitalwegweiser · Bitte vor dem Versand prüfen', W / 2, 288, { align: 'center' })
+
+  return doc
+}
+
 // ─── Nebenkostenabrechnung Tab ─────────────────────────────────────────────────
 function NebenkostenabrechnungTab({ immobilie, onSave }) {
   const aktuellesJahr = new Date().getFullYear()
@@ -1914,7 +2014,8 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
   const [pfad, setPfad] = useState('')
   const [laedt, setLaedt] = useState(false)
   const [fehler, setFehler] = useState(null)
-  const [abrechnung, setAbrechnung] = useState(null)
+  // Gespeicherte Abrechnung aus Immobilien-Datensatz laden
+  const [abrechnung, setAbrechnung] = useState(immobilie.nk_abrechnungen?.[String(aktuellesJahr - 1)] || null)
   const fileRef = useRef(null)
 
   const mieterListe = (immobilie.mieter || [])
@@ -1943,6 +2044,8 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
     setLaedt(true); setFehler(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+
       const res = await fetch(
         'https://ygcmfrwgailmjanoyozm.supabase.co/functions/v1/nebenkostenabrechnung',
         {
@@ -1959,9 +2062,38 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
       )
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Fehler')
-      setAbrechnung(json.abrechnung)
+      const result = json.abrechnung
+      setAbrechnung(result)
+
+      // PDF generieren und in Supabase Storage speichern (überschreibt vorhandene)
+      const doc = generiereNkPdf(result)
+      const pdfBlob = doc.output('blob')
+      const pdfPfad = `${userId}/nk-abrechnung-${immobilie.id}-${jahr}.pdf`
+      await supabase.storage.from('dokumente').remove([pdfPfad])
+      await supabase.storage.from('dokumente').upload(pdfPfad, pdfBlob, { contentType: 'application/pdf' })
+
+      // Abrechnung + PDF-Pfad im Immobilien-Datensatz speichern
+      const neuNkAbrechnungen = { ...(immobilie.nk_abrechnungen || {}), [jahr]: { ...result, pdf_pfad: pdfPfad } }
+      onSave({ ...immobilie, nk_abrechnungen: neuNkAbrechnungen })
     } catch (e) { setFehler(e.message) }
     finally { setLaedt(false) }
+  }
+
+  async function pdfHerunterladen() {
+    try {
+      const pdfPfad = abrechnung?.pdf_pfad
+      if (!pdfPfad) {
+        // Lokal generieren falls kein gespeicherter Pfad
+        generiereNkPdf(abrechnung).save(`NK-Abrechnung-${abrechnung.mieter_name}-${jahr}.pdf`)
+        return
+      }
+      const { data, error } = await supabase.storage.from('dokumente').download(pdfPfad)
+      if (error) throw error
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url; a.download = `NK-Abrechnung-${abrechnung.mieter_name}-${jahr}.pdf`; a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { setFehler(e.message) }
   }
 
   const euro = (n) => Number(n).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
@@ -1977,7 +2109,7 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
       <div className="card space-y-4">
         <div>
           <label className="label">Abrechnungsjahr</label>
-          <select className="input max-w-xs" value={jahr} onChange={e => { setJahr(e.target.value); setAbrechnung(null) }}>
+          <select className="input max-w-xs" value={jahr} onChange={e => { const j = e.target.value; setJahr(j); setAbrechnung(immobilie.nk_abrechnungen?.[j] || null) }}>
             {Array.from({ length: 6 }, (_, i) => aktuellesJahr - 1 - i).map(j => (
               <option key={j} value={j}>{j}</option>
             ))}
@@ -2146,6 +2278,14 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
               ))}
             </div>
           )}
+
+          <button
+            onClick={pdfHerunterladen}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium w-full justify-center border"
+            style={{ borderColor: '#2e6b52', color: '#2e6b52' }}
+          >
+            <Download size={15} /> PDF herunterladen
+          </button>
 
           <p className="text-[10px] text-navy-400 italic text-center">
             Diese Abrechnung wurde KI-gestützt erstellt und dient als Entwurf. Bitte vor dem Versand prüfen.

@@ -21,40 +21,42 @@ Deno.serve(async (req) => {
     const vorauszahlungen_jahres = (Number(mieter.nebenkosten) || 0) * 12
 
     const prompt = `Du bist ein Experte für deutsche Betriebskostenabrechnungen (§556 BGB, BetrKV).
-Analysiere diese WEG-Jahresabrechnung für das Jahr ${abrechnungsjahr} und erstelle daraus eine Nebenkostenabrechnung für den Mieter.
+Analysiere diese WEG-Jahresabrechnung und erstelle eine Nebenkostenabrechnung für den Mieter.
 
 MIETERDATEN:
 - Mieter: ${mieter.name || 'Mieter'}
-- Wohnfläche Mieter: ${wohnflaeche_mieter || '?'} m²
-- Gesamtfläche Gebäude: ${gesamtflaeche || 'aus Dokument ermitteln'} m²
+- Wohnfläche Mieter: ${wohnflaeche_mieter ? wohnflaeche_mieter + ' m²' : 'aus Dokument ermitteln'}
 - NK-Vorauszahlung: ${mieter.nebenkosten || 0} €/Monat = ${vorauszahlungen_jahres} €/Jahr
 
-ZUSÄTZLICHE KOSTEN (nicht in WEG-Abrechnung):
-- Grundsteuer ${abrechnungsjahr}: ${grundsteuer_betrag || 0} € (vollständig umlagefähig gemäß §2 Nr.1 BetrKV)
+ZUSÄTZLICHE KOSTEN (nicht in der WEG-Abrechnung enthalten, trotzdem umlagefähig):
+- Grundsteuer ${abrechnungsjahr}: ${grundsteuer_betrag || 0} € (§2 Nr.1 BetrKV) → Anteil Mieter = ${grundsteuer_betrag || 0} €
 
-REGELN FÜR UMLAGEFÄHIGKEIT (BetrKV §2):
-Umlagefähig: Grundsteuer, Wasserversorgung, Entwässerung, Heizung/Warmwasser, Aufzug-BETRIEB (nicht Reparatur), Straßenreinigung/Müll, Gebäudereinigung, Gartenpflege, Beleuchtung, Schornsteinreinigung, Sach-/Haftpflichtversicherung, Hausmeister (Lohnanteil, kein Instandhaltungsanteil), Gemeinschaftsantenne/Internet, Waschraum, sonstige Betriebskosten.
-NICHT umlagefähig: Verwaltungskosten, Instandhaltung/Reparaturen, Rücklagen, Bankgebühren, Anschaffungen, Rechtskosten.
+AUFGABE — NUR ABLESEN, NIEMALS BERECHNEN:
+Die WEG-Jahresabrechnung hat für jede Kostenposition eine Spalte mit dem bereits berechneten Eigentümeranteil in Euro (z.B. "Ihr Anteil", "Anteil Whg.", "Einheitsbetrag" o.ä.). Dieser Betrag steht schwarz auf weiß im Dokument. Übernimm ihn 1:1. Rechne gar nichts — kein Prozent, keine Umrechnung, keine eigene Anteilsberechnung. Wenn eine Position im Dokument mit 0,00 € ausgewiesen ist, lass sie weg. Berücksichtige ALLE Abrechnungsbereiche im Dokument (Altbau, Neubau, Gemeinschaftsanlagen etc.) — der Eigentümer kann aus mehreren Bereichen Anteile haben.
 
-Antworte NUR mit diesem JSON:
+UMLAGEFÄHIGKEIT (BetrKV §2):
+✅ Umlagefähig: Wasserversorgung, Entwässerung, Heizung/Warmwasser, Aufzug-Betrieb (nicht Reparatur), Straßenreinigung, Müll, Gebäudereinigung, Gartenpflege, Beleuchtung, Schornsteinreinigung, Gebäude-/Haftpflichtversicherung, Hausmeister (Lohnanteil, nicht Instandhaltung), Antenne/Kabel, sonstige laufende Betriebskosten
+❌ Nicht umlagefähig: Verwaltungskosten, Instandhaltungsrücklage, Reparaturen/Instandsetzung, Bankgebühren, Rechtskosten, Sonderumlagen
+
+Antworte NUR mit diesem JSON (Beträge als Dezimalzahlen, kein €):
 {
   "abrechnungsjahr": ${abrechnungsjahr},
   "mieter_name": "${mieter.name || 'Mieter'}",
   "objekt": "Adresse aus Dokument",
-  "gesamtflaeche": 0,
-  "wohnflaeche_mieter": ${wohnflaeche_mieter || 0},
   "anteil_prozent": 0,
   "positionen": [
-    {"name": "Grundsteuer", "gesamtbetrag": ${grundsteuer_betrag || 0}, "anteil_mieter": 0, "umlagefaehig": true, "hinweis": ""},
-    {"name": "Weitere Position", "gesamtbetrag": 0, "anteil_mieter": 0, "umlagefaehig": true, "hinweis": ""}
+    {"name": "Grundsteuer", "gesamtbetrag": ${grundsteuer_betrag || 0}, "anteil_mieter": ${grundsteuer_betrag || 0}, "umlagefaehig": true, "rechtsgrundlage": "§2 Nr.1 BetrKV"},
+    {"name": "Jede weitere Position aus Dokument", "gesamtbetrag": 0, "anteil_mieter": 0, "umlagefaehig": true, "rechtsgrundlage": "§2 BetrKV"}
   ],
   "summe_umlagefaehig_gesamt": 0,
   "anteil_mieter_gesamt": 0,
   "vorauszahlungen": ${vorauszahlungen_jahres},
   "saldo": 0,
   "ist_nachzahlung": true,
-  "nicht_umlagefaehige_positionen": ["Position 1 (Begründung)"],
-  "hinweise": ["Hinweis 1"]
+  "nicht_umlagefaehige_positionen": [
+    {"name": "Verwaltungskosten", "betrag_eigentuemer": 0, "grund": "nicht umlagefähig nach BetrKV"}
+  ],
+  "hinweise": ["Hinweis"]
 }`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -65,8 +67,8 @@ Antworte NUR mit diesem JSON:
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8096,
         messages: [{ role: 'user', content: [
           { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
           { type: 'text', text: prompt },
@@ -78,6 +80,9 @@ Antworte NUR mit diesem JSON:
     const result = await res.json()
     let text = result.content?.find((c: any) => c.type === 'text')?.text?.trim() || ''
     text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    // Alles nach dem letzten } abschneiden (Claude fügt manchmal Text nach dem JSON an)
+    const lastBrace = text.lastIndexOf('}')
+    if (lastBrace !== -1) text = text.slice(0, lastBrace + 1)
 
     return new Response(JSON.stringify({ abrechnung: JSON.parse(text) }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
