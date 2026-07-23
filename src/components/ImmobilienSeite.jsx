@@ -1924,6 +1924,9 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
   // Wirtschaftspläne mit hochgeladener Jahresabrechnung
   const jahresabrechnungen = (immobilie.wirtschaftsplaene || []).filter(w => w.dokument?.pfad)
 
+  // Automatisch erste Jahresabrechnung vorselektieren wenn noch keine gewählt
+  const aktiverPfad = pfad || jahresabrechnungen[0]?.dokument?.pfad || ''
+
   async function uploadUndAnalysieren(file) {
     setLaedt(true); setFehler(null)
     try {
@@ -2012,7 +2015,7 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
                 <button
                   key={w.id}
                   onClick={() => { setPfad(w.dokument.pfad); setAbrechnung(null) }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left border transition-all ${pfad === w.dokument.pfad ? 'border-brand-500 bg-brand-500/5 text-brand-700' : 'border-navy-100 hover:border-navy-200 text-navy-600'}`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left border transition-all ${aktiverPfad === w.dokument.pfad ? 'border-brand-500 bg-brand-500/5 text-brand-700' : 'border-navy-100 hover:border-navy-200 text-navy-600'}`}
                 >
                   <FileText size={13} />
                   <span>{w.dokument._fileName || w.dokument.pfad?.split('/').pop()}</span>
@@ -2031,14 +2034,21 @@ function NebenkostenabrechnungTab({ immobilie, onSave }) {
             onChange={e => { if (e.target.files?.[0]) uploadUndAnalysieren(e.target.files[0]) }} />
         </div>
 
-        {pfad && !laedt && (
-          <button
-            onClick={() => analysieren(pfad)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white w-full justify-center"
-            style={{ background: '#2e6b52' }}
-          >
-            <Receipt size={15} /> Abrechnung für {mieter?.name || 'Mieter'} erstellen
-          </button>
+        {!laedt && (
+          jahresabrechnungen.length > 0 ? (
+            <button
+              onClick={() => analysieren(aktiverPfad)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white w-full justify-center"
+              style={{ background: '#2e6b52' }}
+            >
+              <Receipt size={15} /> Abrechnung für {mieter?.name || 'Mieter'} erstellen
+            </button>
+          ) : (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700">
+              <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+              Keine NK-Abrechnung möglich — bitte zuerst eine WEG-Jahresabrechnung unter „Wirtschaftspläne" hochladen.
+            </div>
+          )
         )}
 
         {laedt && (
