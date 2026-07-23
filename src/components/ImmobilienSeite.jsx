@@ -1838,7 +1838,6 @@ const TABS = [
   { id: 'instandhaltung',    label: 'Instandhaltung',         icon: Wrench },
   { id: 'wirtschaftsplaene', label: 'Wirtschaftspläne',       icon: Calculator },
   { id: 'steuern',           label: 'Steuern',                icon: Euro },
-  { id: 'steuercheck',       label: 'KI-Steuercheck',         icon: Sparkles },
   { id: 'nebenkostenabr',    label: 'NK-Abrechnung',          icon: Receipt, adminOnly: true },
   { id: 'eigentuemerversamm', label: 'Versammlungen',         icon: Users },
 ]
@@ -2328,7 +2327,7 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen, userEmail }
       {aktiverTab === 'instandhaltung'     && <InstandhaltungTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'wirtschaftsplaene'  && <WirtschaftsplaeneTab immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'steuern'           && <SteuernTab         immobilie={immobilie} onSave={onSave} />}
-      {aktiverTab === 'steuercheck'       && <SteuercheckTab             immobilie={immobilie} onSave={onSave} />}
+
       {aktiverTab === 'nebenkostenabr'   && <NebenkostenabrechnungTab   immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'dokumente'         && <DokumenteTab       immobilie={immobilie} onSave={onSave} />}
       {aktiverTab === 'eigentuemerversamm' && <EigentuemerTab    immobilie={immobilie} onSave={onSave} />}
