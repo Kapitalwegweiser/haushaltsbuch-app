@@ -34,6 +34,15 @@ export const MONATE = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ]
 
+export const SPAR_KATEGORIEN = new Set(
+  FIXKOSTEN_KATEGORIEN.find(g => g.gruppe === 'Vorsorge & Sparen')?.eintraege ?? []
+)
+
+export function istSparEintrag(eintrag) {
+  return SPAR_KATEGORIEN.has(eintrag.kategorie) ||
+    /spar|invest|etf|depot|rente|vorsorge/i.test(eintrag.kategorie || '')
+}
+
 export function monatlicherBetrag(betrag, intervall) {
   const opt = INTERVALL_OPTIONEN.find(o => o.wert === intervall)
   return betrag * (opt?.faktor ?? 1)

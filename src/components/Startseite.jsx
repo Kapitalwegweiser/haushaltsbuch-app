@@ -1,5 +1,5 @@
 import { Building2, ChevronRight, Wallet, Shield, Tv, Users, Gift } from 'lucide-react'
-import { monatlicherBetrag, monatlicheEinnahme } from '../data/kategorien'
+import { monatlicherBetrag, monatlicheEinnahme, istSparEintrag } from '../data/kategorien'
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
@@ -7,9 +7,10 @@ function euro(n) {
 
 export default function Startseite({ user, einnahmen, fixkosten, immobilien = [], versicherungen = [], abos = [], vereine = [], setAktivesModul, setAktiveSeite }) {
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
-  const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const fixSumme = fixkosten.filter(f => !istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const fixSparSumme = fixkosten.filter(f => istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const sparBetrag = einnahmenSumme - fixSumme
-  const sparquote = einnahmenSumme > 0 ? (sparBetrag / einnahmenSumme) * 100 : null
+  const sparquote = einnahmenSumme > 0 ? ((sparBetrag + fixSparSumme) / einnahmenSumme) * 100 : null
 
   const vorname = user.user_metadata?.full_name || user.email.split('@')[0]
 

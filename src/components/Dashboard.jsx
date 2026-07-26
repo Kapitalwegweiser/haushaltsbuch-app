@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
-import { monatlicherBetrag, monatlicheEinnahme, MONATE } from '../data/kategorien'
+import { monatlicherBetrag, monatlicheEinnahme, istSparEintrag, MONATE } from '../data/kategorien'
 import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle } from 'lucide-react'
 
 function euro(n) {
@@ -136,13 +136,16 @@ function JahresKostenKalender({ fixkosten }) {
 }
 
 export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [] }) {
-  const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const fixAusgaben = fixkosten.filter(f => !istSparEintrag(f))
+  const fixSpareinlagen = fixkosten.filter(f => istSparEintrag(f))
+  const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const fixSparSumme = fixSpareinlagen.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const abosSumme = abos.reduce((s, v) => s + monatsbetragTracker(v), 0)
   const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
   const gesamtAusgaben = fixSumme + abosSumme + vereineSumme
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
   const sparBetrag = einnahmenSumme - gesamtAusgaben
-  const sparquote = einnahmenSumme > 0 ? (sparBetrag / einnahmenSumme) * 100 : 0
+  const sparquote = einnahmenSumme > 0 ? ((sparBetrag + fixSparSumme) / einnahmenSumme) * 100 : 0
 
   const MONATE_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
   const jahresChart = MONATE_KURZ.map((name, i) => {
