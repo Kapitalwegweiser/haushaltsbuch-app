@@ -2684,10 +2684,10 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
                         <span className="text-red-500">− {euro(monatlicheTilgung)}</span>
                       </div>
                     )}
-                    {+fin.hausgeld > 0 && (
+                    {immoKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0) > 0 && (
                       <div className="flex justify-between text-xs">
                         <span className="text-navy-400">Hausgeld</span>
-                        <span className="text-red-500">− {euro(+fin.hausgeld)}</span>
+                        <span className="text-red-500">− {euro(immoKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0))}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs pt-1 border-t border-navy-50 font-semibold">
