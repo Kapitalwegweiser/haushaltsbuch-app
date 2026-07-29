@@ -823,310 +823,301 @@ function MieterTab({ immobilie, onSave }) {
   )
 }
 
-// ─── Finanzierung-Tab ─────────────────────────────────────────────────────────
+// ─── Finanzierung-Tab (Multi-Kredit) ──────────────────────────────────────────
 const LEER_SONDERTILGUNG = { id: null, datum: '', betrag: '', beschreibung: '' }
+const LEER_KREDIT = {
+  id: null, bezeichnung: '', modus: 'manuell',
+  hausgeld: '', zinsen: '', tilgung: '', bank: '', restschuld: '',
+  darlehensbetrag: '', zinssatz: '', tilgungssatz: '',
+  sondertilgungen: [],
+}
+
+function kreditZinsen(k) {
+  if (k.modus === 'annuitaet' && k.darlehensbetrag && k.zinssatz)
+    return +k.darlehensbetrag * +k.zinssatz / 100 / 12
+  return +k.zinsen || 0
+}
+function kreditTilgung(k) {
+  const z = kreditZinsen(k)
+  if (k.modus === 'annuitaet' && k.darlehensbetrag && k.zinssatz && k.tilgungssatz)
+    return berechneAnnuitaet(+k.darlehensbetrag, +k.zinssatz, +k.tilgungssatz) - z
+  return +k.tilgung || 0
+}
+
+function KreditFormular({ initial, onSpeichern, onAbbrechen }) {
+  const [form, setForm] = useState({ ...LEER_KREDIT, ...initial })
+  const annRate = form.modus === 'annuitaet'
+    ? berechneAnnuitaet(+form.darlehensbetrag, +form.zinssatz, +form.tilgungssatz) : null
+
+  return (
+    <div className="card border-brand-300 space-y-5">
+      <h4 className="font-serif font-semibold text-navy-700">{initial?.id ? 'Kredit bearbeiten' : 'Neuen Kredit anlegen'}</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className="label">Bezeichnung</label>
+          <input className="input" value={form.bezeichnung} onChange={e => setForm({ ...form, bezeichnung: e.target.value })} placeholder="z.B. Hauptdarlehen Sparkasse" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Kreditgeber / Bank</label>
+          <input className="input" value={form.bank} onChange={e => setForm({ ...form, bank: e.target.value })} placeholder="z.B. Sparkasse Friedrichshafen" />
+        </div>
+      </div>
+
+      <div>
+        <label className="label mb-2">Eingabemodus</label>
+        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: '#ede6d8' }}>
+          <button onClick={() => setForm({ ...form, modus: 'manuell' })}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${form.modus !== 'annuitaet' ? 'bg-white text-navy-700 shadow-sm' : 'text-navy-500'}`}>
+            Manuell (€)
+          </button>
+          <button onClick={() => setForm({ ...form, modus: 'annuitaet' })}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${form.modus === 'annuitaet' ? 'bg-white text-navy-700 shadow-sm' : 'text-navy-500'}`}>
+            <Calculator size={13} /> Annuitätendarlehen
+          </button>
+        </div>
+      </div>
+
+      {form.modus === 'annuitaet' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="label">Darlehensbetrag (€)</label>
+            <input className="input" type="number" value={form.darlehensbetrag} onChange={e => setForm({ ...form, darlehensbetrag: e.target.value })} placeholder="z.B. 250000" />
+          </div>
+          <div>
+            <label className="label">Zinssatz (% p.a.)</label>
+            <input className="input" type="number" step="0.01" value={form.zinssatz} onChange={e => setForm({ ...form, zinssatz: e.target.value })} placeholder="z.B. 3.5" />
+          </div>
+          <div>
+            <label className="label">Tilgungssatz (% p.a.)</label>
+            <input className="input" type="number" step="0.01" value={form.tilgungssatz} onChange={e => setForm({ ...form, tilgungssatz: e.target.value })} placeholder="z.B. 2.0" />
+          </div>
+          {annRate > 0 && (
+            <div className="sm:col-span-2 bg-brand-500/10 border border-brand-500/30 rounded-xl px-4 py-3">
+              <p className="text-xs text-brand-600 font-medium uppercase tracking-widest mb-1">Monatliche Rate</p>
+              <p className="text-2xl font-bold text-navy-700">{euro(annRate)}<span className="text-sm font-normal text-navy-400">/Mo.</span></p>
+              <div className="flex gap-4 text-xs text-navy-500 mt-1">
+                <span>Zinsen: <strong>{euro(+form.darlehensbetrag * +form.zinssatz / 100 / 12)}</strong></span>
+                <span>Tilgung: <strong>{euro(annRate - (+form.darlehensbetrag * +form.zinssatz / 100 / 12))}</strong></span>
+              </div>
+            </div>
+          )}
+          <div className="sm:col-span-2">
+            <label className="label">Aktuelle Restschuld (€)</label>
+            <input className="input" type="number" value={form.restschuld} onChange={e => setForm({ ...form, restschuld: e.target.value })} placeholder="0" />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label">Zinsen (€/Mo.)</label>
+            <input className="input" type="number" value={form.zinsen} onChange={e => setForm({ ...form, zinsen: e.target.value })} placeholder="0" />
+          </div>
+          <div>
+            <label className="label">Tilgung (€/Mo.)</label>
+            <input className="input" type="number" value={form.tilgung} onChange={e => setForm({ ...form, tilgung: e.target.value })} placeholder="0" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Aktuelle Restschuld (€)</label>
+            <input className="input" type="number" value={form.restschuld} onChange={e => setForm({ ...form, restschuld: e.target.value })} placeholder="0" />
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="label">Hausgeld (€/Mo.) <span className="text-navy-400 font-normal normal-case">— nur beim ersten Kredit eintragen</span></label>
+        <input className="input" type="number" value={form.hausgeld} onChange={e => setForm({ ...form, hausgeld: e.target.value })} placeholder="0" />
+      </div>
+
+      <div className="flex gap-2">
+        <button className="btn-primary" onClick={() => onSpeichern({ ...form, _annRate: annRate, id: form.id ?? Date.now().toString() })}>
+          <Check size={14} /> Speichern
+        </button>
+        <button className="btn-secondary" onClick={onAbbrechen}><X size={14} /> Abbrechen</button>
+      </div>
+    </div>
+  )
+}
 
 function FinanzierungTab({ immobilie, onSave }) {
-  const fin0 = immobilie.finanzierung || {}
-  const [form, setForm] = useState({
-    modus: 'manuell', // 'manuell' | 'annuitaet'
-    hausgeld: '', zinsen: '', tilgung: '', bank: '', restschuld: '',
-    // Annuitätendarlehen
-    darlehensbetrag: '', zinssatz: '', tilgungssatz: '',
-    sondertilgungen: [],
-    ...fin0
-  })
-  const [bearbeiten, setBearbeiten] = useState(!fin0.zinsen && !fin0.hausgeld && !fin0.zinssatz)
+  // Backward-Compat: finanzierung → kredite[0]
+  const roheKredite = immobilie.kredite?.length > 0
+    ? immobilie.kredite
+    : (immobilie.finanzierung && (immobilie.finanzierung.zinssatz || immobilie.finanzierung.zinsen || immobilie.finanzierung.hausgeld)
+        ? [{ ...immobilie.finanzierung, id: immobilie.finanzierung.id || '1', bezeichnung: immobilie.finanzierung.bezeichnung || 'Kredit 1' }]
+        : [])
+
+  const [kredite, setKredite] = useState(roheKredite)
+  const [formOffen, setFormOffen] = useState(false)
+  const [bearbeitenId, setBearbeitenId] = useState(null)
   const [stFormOffen, setStFormOffen] = useState(false)
+  const [stKreditId, setStKreditId] = useState(null)
   const [stForm, setStForm] = useState(LEER_SONDERTILGUNG)
   const [stBearbId, setStBearbId] = useState(null)
 
-  const annRate = form.modus === 'annuitaet'
-    ? berechneAnnuitaet(+form.darlehensbetrag, +form.zinssatz, +form.tilgungssatz)
-    : null
+  function speichereKredite(neueKredite) {
+    setKredite(neueKredite)
+    onSave({ ...immobilie, kredite: neueKredite })
+  }
 
-  const monatlicheZinsen = form.modus === 'annuitaet' && form.darlehensbetrag && form.zinssatz
-    ? (+form.darlehensbetrag * +form.zinssatz / 100 / 12)
-    : +form.zinsen || 0
-  const monatlicheTilgung = form.modus === 'annuitaet' && annRate
-    ? annRate - monatlicheZinsen
-    : +form.tilgung || 0
+  function kreditSpeichern(k) {
+    const neu = bearbeitenId
+      ? kredite.map(x => x.id === bearbeitenId ? k : x)
+      : [...kredite, k]
+    speichereKredite(neu)
+    setFormOffen(false); setBearbeitenId(null)
+  }
 
-  const sondertilgungen = form.sondertilgungen || []
-  const sonderSumme = sondertilgungen.reduce((s, t) => s + (+t.betrag || 0), 0)
-
-  // Berechnete Restschuld: eingegebene Restschuld abzgl. Sondertilgungen
-  const restschuld = form.restschuld ? +form.restschuld : (form.darlehensbetrag ? +form.darlehensbetrag : null)
-  const restschuldNachSonder = restschuld !== null ? Math.max(0, restschuld - sonderSumme) : null
-
-  function speichern() {
-    onSave({ ...immobilie, finanzierung: { ...form, _annRate: annRate } })
-    setBearbeiten(false)
+  function kreditLoeschen(id) {
+    speichereKredite(kredite.filter(k => k.id !== id))
   }
 
   function stSpeichern() {
     if (!stForm.datum || !stForm.betrag) return
     const eintrag = { ...stForm, betrag: +stForm.betrag, id: stBearbId ?? Date.now().toString() }
-    const neu = stBearbId
-      ? sondertilgungen.map(s => s.id === stBearbId ? eintrag : s)
-      : [...sondertilgungen, eintrag]
-    const neuesFin = { ...form, sondertilgungen: neu }
-    setForm(neuesFin)
-    onSave({ ...immobilie, finanzierung: neuesFin })
-    setStForm(LEER_SONDERTILGUNG)
-    setStBearbId(null)
-    setStFormOffen(false)
+    const neu = kredite.map(k => {
+      if (k.id !== stKreditId) return k
+      const st = k.sondertilgungen || []
+      return { ...k, sondertilgungen: stBearbId ? st.map(s => s.id === stBearbId ? eintrag : s) : [...st, eintrag] }
+    })
+    speichereKredite(neu)
+    setStForm(LEER_SONDERTILGUNG); setStBearbId(null); setStFormOffen(false); setStKreditId(null)
   }
 
-  function stLoeschen(id) {
-    const neu = sondertilgungen.filter(s => s.id !== id)
-    const neuesFin = { ...form, sondertilgungen: neu }
-    setForm(neuesFin)
-    onSave({ ...immobilie, finanzierung: neuesFin })
+  function stLoeschen(kreditId, stId) {
+    const neu = kredite.map(k => k.id !== kreditId ? k : { ...k, sondertilgungen: (k.sondertilgungen || []).filter(s => s.id !== stId) })
+    speichereKredite(neu)
   }
 
-  // Aktiver Mieter für Cashflow — Kaltmiete inkl. evtl. Staffelmiete/Mieterhöhung
+  // Cashflow über alle Kredite summiert
   const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
   const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
-  // MwSt ist durchlaufender Posten → Cashflow immer auf Netto-Basis
   const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
-  const gesamtBelastung = monatlicheZinsen + monatlicheTilgung + (+(fin0.hausgeld || form.hausgeld) || 0)
-  const cashflow = warmmiete - gesamtBelastung
-  const hatCashflow = warmmiete > 0 || gesamtBelastung > 0
   const mwstAktiv = aktiverMieter?.mwst_aktiv
   const mwstSatz = aktiverMieter?.mwst_satz || 19
-
-  const hatDaten = fin0.zinssatz || fin0.zinsen || fin0.hausgeld
+  const gesamtZinsen = kredite.reduce((s, k) => s + kreditZinsen(k), 0)
+  const gesamtTilgung = kredite.reduce((s, k) => s + kreditTilgung(k), 0)
+  const gesamtHausgeld = kredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
+  const gesamtBelastung = gesamtZinsen + gesamtTilgung + gesamtHausgeld
+  const cashflow = warmmiete - gesamtBelastung
 
   return (
     <div className="space-y-6">
-      {hatDaten && !bearbeiten ? (
-        <>
-          {/* Cashflow-Karte */}
-          {hatCashflow && (
-            <div className="card" style={{ borderLeftWidth: '4px', borderLeftColor: '#321f13' }}>
-              <p className="label mb-3">Monatlicher Cashflow</p>
-              <div className="space-y-2 text-sm">
-                {warmmiete > 0 && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''}</span>
-                      <span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte?.kaltmiete || 0)}</span>
-                    </div>
-                    {aktiveMietwerte?.nebenkosten > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-navy-400">Nebenkosten{mwstAktiv ? ' (Netto)' : ''}</span>
-                        <span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte.nebenkosten)}</span>
-                      </div>
-                    )}
-                    {mwstAktiv && (
-                      <div className="flex justify-between text-amber-600 text-xs">
-                        <span>MwSt. {mwstSatz}% (durchlaufend)</span>
-                        <span>+ {euro(warmmiete * mwstSatz / 100)} → Finanzamt</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                {monatlicheZinsen > 0 && <div className="flex justify-between"><span className="text-navy-400">Zinsen</span><span className="text-red-500">− {euro(monatlicheZinsen)}</span></div>}
-                {monatlicheTilgung > 0 && <div className="flex justify-between"><span className="text-navy-400">Tilgung</span><span className="text-red-500">− {euro(monatlicheTilgung)}</span></div>}
-                {(fin0.hausgeld || form.hausgeld) > 0 && <div className="flex justify-between"><span className="text-navy-400">Hausgeld</span><span className="text-red-500">− {euro(fin0.hausgeld || form.hausgeld)}</span></div>}
-                <div className="border-t pt-2 flex justify-between font-bold text-base" style={{ borderColor: '#e8dece' }}>
-                  <span className="text-navy-700">Netto-Cashflow</span>
-                  <span className={cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}>
-                    {cashflow >= 0 ? '+' : ''}{euro(cashflow)}
-                  </span>
-                </div>
-              </div>
+      {/* Cashflow */}
+      {(warmmiete > 0 || gesamtBelastung > 0) && (
+        <div className="card" style={{ borderLeftWidth: '4px', borderLeftColor: '#321f13' }}>
+          <p className="label mb-3">Monatlicher Cashflow</p>
+          <div className="space-y-2 text-sm">
+            {warmmiete > 0 && <>
+              <div className="flex justify-between"><span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''}</span><span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte?.kaltmiete || 0)}</span></div>
+              {(aktiveMietwerte?.nebenkosten || 0) > 0 && <div className="flex justify-between"><span className="text-navy-400">Nebenkosten</span><span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte.nebenkosten)}</span></div>}
+              {mwstAktiv && <div className="flex justify-between text-amber-600 text-xs"><span>MwSt. {mwstSatz}% (durchlaufend)</span><span>→ Finanzamt</span></div>}
+            </>}
+            {gesamtZinsen > 0 && <div className="flex justify-between"><span className="text-navy-400">Zinsen gesamt</span><span className="text-red-500">− {euro(gesamtZinsen)}</span></div>}
+            {gesamtTilgung > 0 && <div className="flex justify-between"><span className="text-navy-400">Tilgung gesamt</span><span className="text-red-500">− {euro(gesamtTilgung)}</span></div>}
+            {gesamtHausgeld > 0 && <div className="flex justify-between"><span className="text-navy-400">Hausgeld</span><span className="text-red-500">− {euro(gesamtHausgeld)}</span></div>}
+            <div className="border-t pt-2 flex justify-between font-bold text-base" style={{ borderColor: '#e8dece' }}>
+              <span className="text-navy-700">Netto-Cashflow</span>
+              <span className={cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}>{cashflow >= 0 ? '+' : ''}{euro(cashflow)}</span>
             </div>
-          )}
-
-          {/* Darlehens-Übersicht */}
-          <div className="flex flex-col gap-3">
-            {fin0.modus === 'annuitaet' && fin0.darlehensbetrag && (
-              <>
-                <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Darlehensbetrag</p><p className="text-base font-bold text-navy-700">{euro(fin0.darlehensbetrag)}</p></div>
-                <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Monatliche Rate</p><p className="text-base font-bold text-navy-700">{euro(fin0._annRate)}</p></div>
-                <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Zinssatz</p><p className="text-base font-bold text-navy-700">{fin0.zinssatz} %</p></div>
-                <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Tilgungssatz</p><p className="text-base font-bold text-navy-700">{fin0.tilgungssatz} %</p></div>
-              </>
-            )}
-            {fin0.modus !== 'annuitaet' && (
-              <>
-                {fin0.zinsen > 0 && <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Zinsen</p><p className="text-base font-bold text-navy-700">{euro(fin0.zinsen)}/Mo.</p></div>}
-                {fin0.tilgung > 0 && <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Tilgung</p><p className="text-base font-bold text-navy-700">{euro(fin0.tilgung)}/Mo.</p></div>}
-              </>
-            )}
-            {fin0.hausgeld > 0 && <div className="card"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Hausgeld</p><p className="text-base font-bold text-navy-700">{euro(fin0.hausgeld)}/Mo.</p></div>}
-            {restschuldNachSonder !== null && (
-              <div className="card col-span-2" style={{ background: '#f7f3ed' }}>
-                <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Aktuelle Restschuld</p>
-                <p className="text-base font-bold text-navy-700">{euro(restschuldNachSonder)}</p>
-                {sonderSumme > 0 && <p className="text-xs text-navy-400 mt-0.5">inkl. {euro(sonderSumme)} Sondertilgungen</p>}
-              </div>
-            )}
-            {fin0.bank && <div className="card col-span-2"><p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kreditgeber</p><p className="font-semibold text-navy-700">{fin0.bank}</p></div>}
-          </div>
-
-          <button className="btn-secondary" onClick={() => setBearbeiten(true)}><Edit2 size={14} /> Finanzierung bearbeiten</button>
-
-          {/* Tilgungsplan-Grafik */}
-          <TilgungsplanChart finanzierung={fin0} />
-        </>
-      ) : (
-        /* Bearbeitungsformular */
-        <div className="card space-y-5">
-          <h3 className="font-serif text-lg font-semibold text-navy-700">Finanzierung eintragen</h3>
-
-          {/* Modus-Umschalter */}
-          <div>
-            <label className="label mb-2">Eingabemodus</label>
-            <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: '#ede6d8' }}>
-              <button
-                onClick={() => setForm({ ...form, modus: 'manuell' })}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${form.modus !== 'annuitaet' ? 'bg-white text-navy-700 shadow-sm' : 'text-navy-500'}`}
-              >Manuell (€)</button>
-              <button
-                onClick={() => setForm({ ...form, modus: 'annuitaet' })}
-                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${form.modus === 'annuitaet' ? 'bg-white text-navy-700 shadow-sm' : 'text-navy-500'}`}
-              ><Calculator size={13} /> Annuitätendarlehen</button>
-            </div>
-          </div>
-
-          {form.modus === 'annuitaet' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="label">Darlehensbetrag (€)</label>
-                <input className="input" type="number" value={form.darlehensbetrag} onChange={e => setForm({ ...form, darlehensbetrag: e.target.value })} placeholder="z.B. 250000" />
-              </div>
-              <div>
-                <label className="label">Zinssatz (% p.a.)</label>
-                <input className="input" type="number" step="0.01" value={form.zinssatz} onChange={e => setForm({ ...form, zinssatz: e.target.value })} placeholder="z.B. 3.5" />
-              </div>
-              <div>
-                <label className="label">Anfänglicher Tilgungssatz (% p.a.)</label>
-                <input className="input" type="number" step="0.01" value={form.tilgungssatz} onChange={e => setForm({ ...form, tilgungssatz: e.target.value })} placeholder="z.B. 2.0" />
-              </div>
-              {annRate && (
-                <div className="sm:col-span-2 bg-brand-500/10 border border-brand-500/30 rounded-xl px-4 py-3">
-                  <p className="text-xs text-brand-600 font-medium uppercase tracking-widest mb-1">Berechnete monatliche Rate</p>
-                  <p className="text-2xl font-bold text-navy-700">{euro(annRate)}<span className="text-sm font-normal text-navy-400">/Mo.</span></p>
-                  <div className="flex gap-4 text-xs text-navy-500 mt-1">
-                    <span>davon Zinsen: <strong>{euro(+form.darlehensbetrag * +form.zinssatz / 100 / 12)}</strong></span>
-                    <span>davon Tilgung: <strong>{euro(annRate - (+form.darlehensbetrag * +form.zinssatz / 100 / 12))}</strong></span>
-                  </div>
-                </div>
-              )}
-              <div className="sm:col-span-2">
-                <label className="label">Aktueller Restschuldstand (€) <span className="text-navy-400 font-normal normal-case">— manuell eingeben</span></label>
-                <input className="input" type="number" value={form.restschuld} onChange={e => setForm({ ...form, restschuld: e.target.value })} placeholder="0" />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Zinsen (€/Mo.)</label>
-                <input className="input" type="number" value={form.zinsen} onChange={e => setForm({ ...form, zinsen: e.target.value })} placeholder="0" />
-              </div>
-              <div>
-                <label className="label">Tilgung (€/Mo.)</label>
-                <input className="input" type="number" value={form.tilgung} onChange={e => setForm({ ...form, tilgung: e.target.value })} placeholder="0" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="label">Aktuelle Restschuld (€)</label>
-                <input className="input" type="number" value={form.restschuld} onChange={e => setForm({ ...form, restschuld: e.target.value })} placeholder="0" />
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">Hausgeld (€/Mo.)</label>
-              <input className="input" type="number" value={form.hausgeld} onChange={e => setForm({ ...form, hausgeld: e.target.value })} placeholder="0" />
-            </div>
-            <div>
-              <label className="label">Kreditgeber / Bank</label>
-              <input className="input" value={form.bank} onChange={e => setForm({ ...form, bank: e.target.value })} placeholder="z.B. Sparkasse" />
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button className="btn-primary" onClick={speichern}><Check size={14} /> Speichern</button>
-            {hatDaten && <button className="btn-secondary" onClick={() => setBearbeiten(false)}><X size={14} /> Abbrechen</button>}
           </div>
         </div>
       )}
 
-      {/* Sondertilgungen */}
+      {/* Kredit-Liste */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-navy-700">Sondertilgungen</h3>
-          {!stFormOffen && (
-            <button
-              onClick={() => { setStBearbId(null); setStForm(LEER_SONDERTILGUNG); setStFormOffen(true) }}
-              className="text-xs text-brand-500 hover:text-brand-600 font-medium flex items-center gap-1"
-            ><Plus size={13} /> Hinzufügen</button>
+          <h3 className="font-semibold text-navy-700">Kredite ({kredite.length})</h3>
+          {!formOffen && (
+            <button onClick={() => { setBearbeitenId(null); setFormOffen(true) }}
+              className="text-xs text-brand-500 hover:text-brand-600 font-medium flex items-center gap-1">
+              <Plus size={13} /> Kredit hinzufügen
+            </button>
           )}
         </div>
 
-        {sonderSumme > 0 && (
-          <div className="card flex items-center gap-3" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
-            <div>
-              <p className="label mb-0.5">Gesamte Sondertilgungen</p>
-              <p className="text-base font-bold text-brand-600">{euro(sonderSumme)}</p>
-            </div>
-            {restschuld !== null && (
-              <div className="ml-auto text-right">
-                <p className="text-xs text-navy-400">Restschuld danach</p>
-                <p className="text-base font-bold text-navy-700">{euro(restschuldNachSonder)}</p>
-              </div>
-            )}
-          </div>
+        {formOffen && (
+          <KreditFormular
+            initial={bearbeitenId ? kredite.find(k => k.id === bearbeitenId) : null}
+            onSpeichern={kreditSpeichern}
+            onAbbrechen={() => { setFormOffen(false); setBearbeitenId(null) }}
+          />
         )}
 
-        {stFormOffen && (
-          <div className="card border-brand-400 space-y-4">
-            <h4 className="font-semibold text-navy-700">Sondertilgung eintragen</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Datum</label>
-                <input className="input" type="date" value={stForm.datum} onChange={e => setStForm({ ...stForm, datum: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Betrag (€)</label>
-                <input className="input" type="number" value={stForm.betrag} onChange={e => setStForm({ ...stForm, betrag: e.target.value })} placeholder="0" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="label">Beschreibung (optional)</label>
-                <input className="input" value={stForm.beschreibung} onChange={e => setStForm({ ...stForm, beschreibung: e.target.value })} placeholder="z.B. Jahres-Sondertilgung 2025" />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={stSpeichern}><Check size={14} /> Speichern</button>
-              <button className="btn-secondary" onClick={() => { setStFormOffen(false); setStBearbId(null) }}><X size={14} /> Abbrechen</button>
-            </div>
-          </div>
+        {kredite.length === 0 && !formOffen && (
+          <p className="text-sm text-navy-400">Noch kein Kredit eingetragen.</p>
         )}
 
-        {sondertilgungen.length === 0 && !stFormOffen ? (
-          <p className="text-sm text-navy-400">Noch keine Sondertilgungen eingetragen.</p>
-        ) : (
-          <div className="card p-0 overflow-hidden">
-            {[...sondertilgungen].sort((a, b) => b.datum.localeCompare(a.datum)).map((st, i, arr) => (
-              <div key={st.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-navy-50/40 ${i < arr.length - 1 ? 'border-b border-navy-50' : ''}`}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-navy-700">{st.beschreibung || 'Sondertilgung'}</p>
-                  <p className="text-xs text-navy-400">{datumDE(st.datum)}</p>
+        {kredite.map(k => {
+          const z = kreditZinsen(k); const t = kreditTilgung(k)
+          const rs = k.restschuld ? +k.restschuld : (k.darlehensbetrag ? +k.darlehensbetrag : null)
+          const sonderSumme = (k.sondertilgungen || []).reduce((s, x) => s + (+x.betrag || 0), 0)
+          const rsNachSonder = rs !== null ? Math.max(0, rs - sonderSumme) : null
+          const stOffen = stFormOffen && stKreditId === k.id
+          return (
+            <div key={k.id} className="card space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-navy-700">{k.bezeichnung || k.bank || 'Kredit'}</p>
+                  {k.bank && k.bezeichnung && <p className="text-xs text-navy-400">{k.bank}</p>}
                 </div>
-                <p className="text-sm font-bold text-brand-600 shrink-0">{euro(st.betrag)}</p>
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => { setStForm({ ...st, betrag: st.betrag.toString() }); setStBearbId(st.id); setStFormOffen(true) }}
-                    className="p-1 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={13} /></button>
-                  <button onClick={() => stLoeschen(st.id)} className="p-1 text-red-400 hover:text-red-600 rounded"><Trash2 size={13} /></button>
+                  <button onClick={() => { setBearbeitenId(k.id); setFormOffen(true) }} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={13} /></button>
+                  <button onClick={() => kreditLoeschen(k.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded"><Trash2 size={13} /></button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {k.modus === 'annuitaet' && k.darlehensbetrag && <div><p className="text-xs text-navy-400">Darlehensbetrag</p><p className="font-bold text-navy-700">{euro(k.darlehensbetrag)}</p></div>}
+                {k._annRate > 0 && <div><p className="text-xs text-navy-400">Monatl. Rate</p><p className="font-bold text-navy-700">{euro(k._annRate)}</p></div>}
+                {k.zinssatz && <div><p className="text-xs text-navy-400">Zinssatz</p><p className="font-bold text-navy-700">{k.zinssatz} %</p></div>}
+                {k.tilgungssatz && <div><p className="text-xs text-navy-400">Tilgungssatz</p><p className="font-bold text-navy-700">{k.tilgungssatz} %</p></div>}
+                {z > 0 && <div><p className="text-xs text-navy-400">Zinsen</p><p className="font-bold text-navy-700">{euro(z)}/Mo.</p></div>}
+                {t > 0 && <div><p className="text-xs text-navy-400">Tilgung</p><p className="font-bold text-navy-700">{euro(t)}/Mo.</p></div>}
+                {rsNachSonder !== null && <div className="col-span-2" style={{ background: '#f7f3ed', borderRadius: 8, padding: '8px 10px' }}><p className="text-xs text-navy-400">Aktuelle Restschuld</p><p className="font-bold text-navy-700">{euro(rsNachSonder)}{sonderSumme > 0 && <span className="text-xs text-navy-400 ml-1">(inkl. {euro(sonderSumme)} Sondertilg.)</span>}</p></div>}
+              </div>
+
+              <TilgungsplanChart finanzierung={k} />
+
+              {/* Sondertilgungen */}
+              <div className="space-y-2 pt-1 border-t" style={{ borderColor: '#e8dece' }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-navy-500 uppercase tracking-widest">Sondertilgungen</p>
+                  {!stOffen && (
+                    <button onClick={() => { setStKreditId(k.id); setStBearbId(null); setStForm(LEER_SONDERTILGUNG); setStFormOffen(true) }}
+                      className="text-xs text-brand-500 hover:text-brand-600 font-medium flex items-center gap-1">
+                      <Plus size={11} /> Hinzufügen
+                    </button>
+                  )}
+                </div>
+                {stOffen && (
+                  <div className="space-y-3 p-3 rounded-lg" style={{ background: '#f7f3ed' }}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="label">Datum</label><input className="input" type="date" value={stForm.datum} onChange={e => setStForm({ ...stForm, datum: e.target.value })} /></div>
+                      <div><label className="label">Betrag (€)</label><input className="input" type="number" value={stForm.betrag} onChange={e => setStForm({ ...stForm, betrag: e.target.value })} /></div>
+                      <div className="col-span-2"><label className="label">Beschreibung (optional)</label><input className="input" value={stForm.beschreibung} onChange={e => setStForm({ ...stForm, beschreibung: e.target.value })} placeholder="z.B. Jahres-Sondertilgung 2025" /></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn-primary" onClick={stSpeichern}><Check size={13} /> Speichern</button>
+                      <button className="btn-secondary" onClick={() => { setStFormOffen(false); setStKreditId(null) }}><X size={13} /> Abbrechen</button>
+                    </div>
+                  </div>
+                )}
+                {(k.sondertilgungen || []).length === 0 && !stOffen && <p className="text-xs text-navy-400">Keine Sondertilgungen.</p>}
+                {(k.sondertilgungen || []).sort((a, b) => b.datum.localeCompare(a.datum)).map(st => (
+                  <div key={st.id} className="flex items-center gap-2 text-sm">
+                    <div className="flex-1">
+                      <span className="text-navy-700">{st.beschreibung || 'Sondertilgung'}</span>
+                      <span className="text-navy-400 ml-2 text-xs">{datumDE(st.datum)}</span>
+                    </div>
+                    <span className="font-bold text-brand-600">{euro(st.betrag)}</span>
+                    <button onClick={() => { setStForm({ ...st, betrag: st.betrag.toString() }); setStBearbId(st.id); setStKreditId(k.id); setStFormOffen(true) }} className="p-1 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={12} /></button>
+                    <button onClick={() => stLoeschen(k.id, st.id)} className="p-1 text-red-400 hover:text-red-600 rounded"><Trash2 size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -2499,14 +2490,15 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen, userEmail }
   const sichtbareTabs = TABS.filter(t => !t.adminOnly || userEmail === ADMIN_EMAIL)
 
   const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
-  const fin = immobilie.finanzierung || {}
-  const monatlicheZinsen = fin.modus === 'annuitaet' && fin.darlehensbetrag && fin.zinssatz
-    ? (+fin.darlehensbetrag * +fin.zinssatz / 100 / 12) : (+fin.zinsen || 0)
-  const monatlicheTilgung = fin.modus === 'annuitaet' && fin._annRate
-    ? fin._annRate - monatlicheZinsen : (+fin.tilgung || 0)
+  const alleKredite = immobilie.kredite?.length > 0
+    ? immobilie.kredite
+    : (immobilie.finanzierung && (immobilie.finanzierung.zinssatz || immobilie.finanzierung.zinsen) ? [immobilie.finanzierung] : [])
+  const monatlicheZinsen = alleKredite.reduce((s, k) => s + kreditZinsen(k), 0)
+  const monatlicheTilgung = alleKredite.reduce((s, k) => s + kreditTilgung(k), 0)
+  const gesamtHausgeld = alleKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
   const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
   const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
-  const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - (+fin.hausgeld || 0)
+  const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - gesamtHausgeld
   const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
 
   return (
@@ -2640,15 +2632,14 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {immobilien.map(immo => {
             const aktiverMieter = (immo.mieter || []).find(m => istAktiv(m))
-            const fin = immo.finanzierung || {}
-            const monatlicheZinsen = fin.modus === 'annuitaet' && fin.darlehensbetrag && fin.zinssatz
-              ? (+fin.darlehensbetrag * +fin.zinssatz / 100 / 12) : (+fin.zinsen || 0)
+            const immoKredite = immo.kredite?.length > 0
+              ? immo.kredite
+              : (immo.finanzierung && (immo.finanzierung.zinssatz || immo.finanzierung.zinsen) ? [immo.finanzierung] : [])
+            const monatlicheZinsen = immoKredite.reduce((s, k) => s + kreditZinsen(k), 0)
+            const monatlicheTilgung = immoKredite.reduce((s, k) => s + kreditTilgung(k), 0)
             const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
-            // Cashflow immer auf Netto-Basis (MwSt ist durchlaufender Posten)
             const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
-            const monatlicheTilgung = fin.modus === 'annuitaet' && fin._annRate
-              ? fin._annRate - monatlicheZinsen : (+fin.tilgung || 0)
-            const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - (+fin.hausgeld || 0)
+            const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - immoKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
             const immoMwstAktiv = aktiverMieter?.mwst_aktiv
             const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
             const hatAktiv = !!aktiverMieter
