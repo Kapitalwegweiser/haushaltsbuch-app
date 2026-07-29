@@ -14,10 +14,10 @@ function monatsbetrag(v) { return jahresbetrag(v) / 12 }
 const LEER = { name: '', anbieter: '', beitrag: '', intervall: 'monatlich', notizen: '' }
 
 // Generische Tracker-Seite für einfache, wiederkehrende Posten (Abos, Vereine, ...)
-// ohne Kategorien oder Optimierungshinweise
 export default function TrackerSeite({
   items, setItems,
-  titel, ueberschrift, anbieterLabel, leerTitel, leerText, farbe = '#2e6b52', bg = '#edf7f2', icon: Icon,
+  titel, ueberschrift, anbieterLabel, kategorienOptionen,
+  leerTitel, leerText, farbe = '#2e6b52', bg = '#edf7f2', icon: Icon,
 }) {
   const [formOffen, setFormOffen]     = useState(false)
   const [editId, setEditId]           = useState(null)
@@ -27,7 +27,10 @@ export default function TrackerSeite({
   const gesamtJahr  = items.reduce((s, v) => s + jahresbetrag(v), 0)
   const gesamtMonat = gesamtJahr / 12
 
-  function oeffneNeu() { setForm(LEER); setEditId(null); setFormOffen(true) }
+  function oeffneNeu() {
+    const leer = { ...LEER, anbieter: kategorienOptionen?.[0] ?? '' }
+    setForm(leer); setEditId(null); setFormOffen(true)
+  }
   function oeffneEdit(v) { setForm({ ...LEER, ...v }); setEditId(v.id); setFormOffen(true) }
 
   function speichern() {
@@ -162,8 +165,14 @@ export default function TrackerSeite({
               </div>
               <div>
                 <label className="label">{anbieterLabel}</label>
-                <input className="input" placeholder="z. B. Netflix GmbH, Vereinsname…"
-                  value={form.anbieter} onChange={e => setForm(f => ({ ...f, anbieter: e.target.value }))} />
+                {kategorienOptionen ? (
+                  <select className="input" value={form.anbieter} onChange={e => setForm(f => ({ ...f, anbieter: e.target.value }))}>
+                    {kategorienOptionen.map(k => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                ) : (
+                  <input className="input" placeholder="z. B. Netflix GmbH, Vereinsname…"
+                    value={form.anbieter} onChange={e => setForm(f => ({ ...f, anbieter: e.target.value }))} />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

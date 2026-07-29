@@ -34,6 +34,10 @@ export const MONATE = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ]
 
+export const ABO_KATEGORIEN = new Set(
+  FIXKOSTEN_KATEGORIEN.find(g => g.gruppe === 'Abonnements & Medien')?.eintraege ?? []
+)
+
 export const SPAR_KATEGORIEN = new Set(
   FIXKOSTEN_KATEGORIEN.find(g => g.gruppe === 'Vorsorge & Sparen')?.eintraege ?? []
 )

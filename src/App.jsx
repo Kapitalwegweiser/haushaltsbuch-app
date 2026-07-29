@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useCloudCollection } from './hooks/useCloudCollection'
 import { useCloudJsonCollection } from './hooks/useCloudJsonCollection'
+import { ABO_KATEGORIEN } from './data/kategorien'
 import Navigation from './components/Navigation'
 import Startseite from './components/Startseite'
 import ProfilSeite from './components/ProfilSeite'
@@ -79,14 +80,60 @@ function AppInner() {
   const [fixkosten,     setFixkosten,     fixkostenLaden]     = useCloudCollection('fixkosten',     user?.id)
   const [immobilien,    setImmobilien,    immobilienLaden]    = useCloudJsonCollection('immobilien',    user?.id)
   const [versicherungen, setVersicherungen, versicherungenLaden] = useCloudJsonCollection('versicherungen', user?.id)
-  const [abos,          setAbos,          abosLaden]          = useCloudJsonCollection('abos',          user?.id)
+  const [altAbos,       setAltAbos,       altAbosLaden]       = useCloudJsonCollection('abos',          user?.id)
   const [vereine,       setVereine,       vereineLaden]        = useCloudJsonCollection('vereine',       user?.id)
+
+  // Einmalige Migration: alte abos-Sammlung → fixkosten
+  const aboMigrationDone = useRef(false)
+  useEffect(() => {
+    if (altAbosLaden || fixkostenLaden || aboMigrationDone.current) return
+    aboMigrationDone.current = true
+    if (altAbos.length === 0) return
+    setFixkosten(prev => {
+      const existingIds = new Set(prev.map(f => f.id))
+      const toAdd = altAbos
+        .filter(a => !existingIds.has(a.id))
+        .map(a => ({
+          id: a.id,
+          name: a.name || 'Abo',
+          kategorie: ABO_KATEGORIEN.has(a.anbieter) ? a.anbieter : [...ABO_KATEGORIEN][0],
+          betrag: parseFloat(a.beitrag) || 0,
+          intervall: a.intervall || 'monatlich',
+        }))
+      return toAdd.length > 0 ? [...prev, ...toAdd] : prev
+    })
+    setAltAbos([])
+  }, [altAbosLaden, fixkostenLaden]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (authLoading) return <LadeScreen />
   if (!user)       return <LoginSeite />
 
-  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden || abosLaden || vereineLaden
+  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden || altAbosLaden || vereineLaden
   if (dataLaden) return <LadeScreen />
+
+  // Abos = fixkosten-Einträge mit Abo-Kategorie (single source of truth)
+  const abos = fixkosten
+    .filter(f => ABO_KATEGORIEN.has(f.kategorie))
+    .map(f => ({ id: f.id, name: f.name, anbieter: f.kategorie, beitrag: f.betrag, intervall: f.intervall, notizen: '' }))
+
+  function setAbos(updaterOrValue) {
+    setFixkosten(prev => {
+      const aboIds = new Set(prev.filter(f => ABO_KATEGORIEN.has(f.kategorie)).map(f => f.id))
+      const currentAbos = prev
+        .filter(f => aboIds.has(f.id))
+        .map(f => ({ id: f.id, name: f.name, anbieter: f.kategorie, beitrag: f.betrag, intervall: f.intervall, notizen: '' }))
+      const newAbos = typeof updaterOrValue === 'function' ? updaterOrValue(currentAbos) : updaterOrValue
+      const nonAbos = prev.filter(f => !aboIds.has(f.id))
+      const newAboFixkosten = newAbos.map(a => ({
+        id: a.id,
+        name: a.name,
+        kategorie: ABO_KATEGORIEN.has(a.anbieter) ? a.anbieter : [...ABO_KATEGORIEN][0],
+        betrag: parseFloat(a.beitrag) || 0,
+        intervall: a.intervall || 'monatlich',
+      }))
+      return [...nonAbos, ...newAboFixkosten]
+    })
+  }
 
   const sollteOnboardingZeigen = !onboardingAbgeschlossen && einnahmen.length === 0 && fixkosten.length === 0
   const sollTourZeigen         = onboardingAbgeschlossen && !tourAbgeschlossen
@@ -112,7 +159,8 @@ function AppInner() {
         return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} einnahmen={einnahmen} />
       case 'abos':
         return <TrackerSeite items={abos} setItems={setAbos} titel="Abos" ueberschrift="Meine Abos"
-          anbieterLabel="Anbieter" leerTitel="Noch keine Abos" leerText="Füge dein erstes Abo hinzu."
+          anbieterLabel="Kategorie" kategorienOptionen={[...ABO_KATEGORIEN]}
+          leerTitel="Noch keine Abos" leerText="Füge dein erstes Abo hinzu."
           farbe="#5b4fa8" bg="#f0eeff" icon={Tv} />
       case 'vereine':
         return <TrackerSeite items={vereine} setItems={setVereine} titel="Vereine" ueberschrift="Meine Vereine"
