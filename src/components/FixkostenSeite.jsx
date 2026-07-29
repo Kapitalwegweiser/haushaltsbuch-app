@@ -3,7 +3,7 @@ import { Plus, Trash2, Edit2, Check, X, Home, Car, Shield, PiggyBank, Tv, Heart,
 import { FIXKOSTEN_KATEGORIEN, INTERVALL_OPTIONEN, MONATE, monatlicherBetrag } from '../data/kategorien'
 import KategorieSelect from './KategorieSelect'
 
-const LEER = { name: '', kategorie: '', betrag: '', intervall: 'monatlich', abbuchungsmonat: new Date().getMonth() + 1 }
+const LEER = { name: '', kategorie: '', kategorieGruppe: null, betrag: '', intervall: 'monatlich', abbuchungsmonat: new Date().getMonth() + 1 }
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
@@ -21,9 +21,10 @@ const GRUPPE_META = {
   'Sonstiges':             { icon: MoreHorizontal,farbe: '#888',    bg: '#f5f5f5' },
 }
 
-function gruppeVonKategorie(kategorieName) {
+function gruppeVonKategorie(eintrag) {
+  if (eintrag.kategorieGruppe) return eintrag.kategorieGruppe
   for (const g of FIXKOSTEN_KATEGORIEN) {
-    if (g.eintraege.includes(kategorieName)) return g.gruppe
+    if (g.eintraege.includes(eintrag.kategorie)) return g.gruppe
   }
   return 'Sonstiges'
 }
@@ -45,7 +46,7 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
   function validiere() {
     const f = {}
     if (!formular.name.trim()) f.name = 'Pflichtfeld'
-    if (!formular.kategorie) f.kategorie = 'Pflichtfeld'
+    if (!formular.kategorie) f.kategorie = formular.kategorieGruppe ? 'Bitte Bezeichnung eingeben' : 'Pflichtfeld'
     if (!formular.betrag || isNaN(formular.betrag) || +formular.betrag <= 0) f.betrag = 'Gültigen Betrag eingeben'
     return f
   }
@@ -86,7 +87,7 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
   function gruppiereNach(liste) {
     const map = {}
     for (const f of liste) {
-      const g = gruppeVonKategorie(f.kategorie)
+      const g = gruppeVonKategorie(f)
       if (!map[g]) map[g] = []
       map[g].push(f)
     }
@@ -183,8 +184,14 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
             </div>
             <div>
               <label className="label">Kategorie</label>
-              <KategorieSelect kategorien={FIXKOSTEN_KATEGORIEN} value={formular.kategorie}
-                onChange={v => setFormular({ ...formular, kategorie: v })} placeholder="Kategorie wählen..." />
+              <KategorieSelect
+                kategorien={FIXKOSTEN_KATEGORIEN}
+                value={formular.kategorie}
+                kategorieGruppe={formular.kategorieGruppe}
+                onChange={v => setFormular(f => ({ ...f, kategorie: v }))}
+                onGruppe={g => setFormular(f => ({ ...f, kategorieGruppe: g }))}
+                placeholder="Kategorie wählen..."
+              />
               {fehler.kategorie && <p className="text-red-500 text-xs mt-1">{fehler.kategorie}</p>}
             </div>
             <div>

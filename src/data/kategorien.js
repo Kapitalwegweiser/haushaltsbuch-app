@@ -43,7 +43,8 @@ export const SPAR_KATEGORIEN = new Set(
 )
 
 export function istSparEintrag(eintrag) {
-  return SPAR_KATEGORIEN.has(eintrag.kategorie) ||
+  return eintrag.kategorieGruppe === 'Vorsorge & Sparen' ||
+    SPAR_KATEGORIEN.has(eintrag.kategorie) ||
     /spar|invest|etf|depot|rente|vorsorge/i.test(eintrag.kategorie || '')
 }
 

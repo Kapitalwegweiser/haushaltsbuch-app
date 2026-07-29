@@ -113,7 +113,7 @@ function AppInner() {
 
   // Abos = fixkosten-Einträge mit Abo-Kategorie (single source of truth)
   const abos = fixkosten
-    .filter(f => ABO_KATEGORIEN.has(f.kategorie))
+    .filter(f => ABO_KATEGORIEN.has(f.kategorie) || f.kategorieGruppe === 'Abonnements & Medien')
     .map(f => ({ id: f.id, name: f.name, anbieter: f.kategorie, beitrag: f.betrag, intervall: f.intervall, notizen: '' }))
 
   function setAbos(updaterOrValue) {
