@@ -627,6 +627,7 @@ function MieterTab({ immobilie, onSave }) {
   const [formOffen, setFormOffen] = useState(false)
   const [bearbeitungId, setBearbeitungId] = useState(null)
   const [historieOffen, setHistorieOffen] = useState(false)
+  const [aufgeklappt, setAufgeklappt] = useState({})
 
   const aktive   = mieterListe.filter(m => istAktiv(m))
   const inaktive = mieterListe.filter(m => !istAktiv(m)).sort((a, b) => b.mietende?.localeCompare(a.mietende))
@@ -679,27 +680,35 @@ function MieterTab({ immobilie, onSave }) {
           />
         )
         const aktuell = aktuelleMietwerte(m)
+        const offen = !!aufgeklappt[m.id]
         return (
-        <div key={m.id} className="card space-y-4" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
-                <User size={18} className="text-brand-600" />
+        <div key={m.id} className="card" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52', padding: 0, overflow: 'hidden' }}>
+          {/* Header — immer sichtbar, klickbar zum Aufklappen */}
+          <button
+            className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-navy-50/40 transition-colors"
+            onClick={() => setAufgeklappt(s => ({ ...s, [m.id]: !s[m.id] }))}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
+                <User size={16} className="text-brand-600" />
               </div>
-              <div>
-                <p className="font-semibold text-navy-700">{m.name}</p>
-                {m.telefon && <p className="text-xs text-navy-500">{m.telefon}</p>}
+              <div className="min-w-0">
+                <p className="font-semibold text-navy-700 truncate">{m.name}</p>
+                {m.telefon && <p className="text-xs text-navy-500 truncate">{m.telefon}</p>}
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#c0dfd3', color: '#1f4d3a' }}>Aktueller Mieter</span>
-              <button onClick={() => bearbeiten(m)} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={14} /></button>
-              <button onClick={() => loeschen(m.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded"><Trash2 size={14} /></button>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium hidden sm:inline" style={{ background: '#c0dfd3', color: '#1f4d3a' }}>Aktueller Mieter</span>
+              <button onClick={e => { e.stopPropagation(); bearbeiten(m) }} className="p-1.5 text-navy-400 hover:text-navy-700 rounded"><Edit2 size={14} /></button>
+              <button onClick={e => { e.stopPropagation(); loeschen(m.id) }} className="p-1.5 text-red-400 hover:text-red-600 rounded"><Trash2 size={14} /></button>
+              {offen ? <ChevronUp size={15} className="text-navy-400" /> : <ChevronDown size={15} className="text-navy-400" />}
             </div>
-          </div>
+          </button>
 
+          {/* Details — nur wenn aufgeklappt */}
+          {offen && <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: '#e8dece' }}>
           {/* Mietdaten */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pt-3">
             <div className="card bg-white">
               <p className="text-xs text-navy-400 uppercase tracking-widest mb-1">Kaltmiete {aktuell.hatStaffel && <span className="text-brand-500">· aktuell</span>}{m.mwst_aktiv && <span className="text-amber-600"> · Netto</span>}</p>
               <p className="text-base font-bold text-brand-600">{euro(aktuell.kaltmiete)}/Mo.</p>
@@ -756,6 +765,7 @@ function MieterTab({ immobilie, onSave }) {
           )}
 
           <MietverlaufBlock mieter={m} onSpeichern={neueStaffel => staffelSpeichern(m.id, neueStaffel)} />
+          </div>}
         </div>
         )
       })}
