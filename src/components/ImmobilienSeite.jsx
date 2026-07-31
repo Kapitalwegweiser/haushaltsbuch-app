@@ -669,6 +669,15 @@ function MieterTab({ immobilie, onSave }) {
       )}
 
       {aktive.map(m => {
+        if (bearbeitungId === m.id) return (
+          <MieterFormular
+            key={m.id}
+            initial={m}
+            titel="Mieter bearbeiten"
+            onSpeichern={speichern}
+            onAbbrechen={() => { setFormOffen(false); setBearbeitungId(null) }}
+          />
+        )
         const aktuell = aktuelleMietwerte(m)
         return (
         <div key={m.id} className="card space-y-4" style={{ borderLeftWidth: '4px', borderLeftColor: '#2e6b52' }}>
@@ -751,16 +760,6 @@ function MieterTab({ immobilie, onSave }) {
         )
       })}
 
-      {/* Formular */}
-      {formOffen && (
-        <MieterFormular
-          initial={bearbeiteteMieter || LEER_MIETER}
-          titel={bearbeitungId ? 'Mieter bearbeiten' : 'Neuer Mieter'}
-          onSpeichern={speichern}
-          onAbbrechen={() => { setFormOffen(false); setBearbeitungId(null) }}
-        />
-      )}
-
       {!formOffen && (
         <button className="btn-primary" onClick={() => { setBearbeitungId(null); setFormOffen(true) }}>
           <Plus size={15} /> Mieter hinzufügen
@@ -780,7 +779,15 @@ function MieterTab({ immobilie, onSave }) {
 
           {historieOffen && (
             <div className="mt-3 space-y-3">
-              {inaktive.map(m => (
+              {inaktive.map(m => bearbeitungId === m.id ? (
+                <MieterFormular
+                  key={m.id}
+                  initial={m}
+                  titel="Mieter bearbeiten"
+                  onSpeichern={speichern}
+                  onAbbrechen={() => { setFormOffen(false); setBearbeitungId(null) }}
+                />
+              ) : (
                 <div key={m.id} className="card opacity-75 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -818,6 +825,16 @@ function MieterTab({ immobilie, onSave }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Formular nur für neuen Mieter */}
+      {formOffen && !bearbeitungId && (
+        <MieterFormular
+          initial={LEER_MIETER}
+          titel="Neuer Mieter"
+          onSpeichern={speichern}
+          onAbbrechen={() => { setFormOffen(false); setBearbeitungId(null) }}
+        />
       )}
     </div>
   )
