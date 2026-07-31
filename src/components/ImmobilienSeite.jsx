@@ -988,12 +988,13 @@ function FinanzierungTab({ immobilie, onSave }) {
     speichereKredite(neu)
   }
 
-  // Cashflow über alle Kredite summiert
-  const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
-  const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
-  const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
-  const mwstAktiv = aktiverMieter?.mwst_aktiv
-  const mwstSatz = aktiverMieter?.mwst_satz || 19
+  // Cashflow über alle Kredite und alle aktiven Mieter summiert
+  const aktiveMieter = (immobilie.mieter || []).filter(m => istAktiv(m))
+  const gesamtKaltmiete = aktiveMieter.reduce((s, m) => s + (aktuelleMietwerte(m)?.kaltmiete || 0), 0)
+  const gesamtNebenkosten = aktiveMieter.reduce((s, m) => s + (aktuelleMietwerte(m)?.nebenkosten || 0), 0)
+  const warmmiete = gesamtKaltmiete + gesamtNebenkosten
+  const mwstAktiv = aktiveMieter.some(m => m.mwst_aktiv)
+  const mwstSatz = aktiveMieter.find(m => m.mwst_aktiv)?.mwst_satz || 19
   const gesamtZinsen = kredite.reduce((s, k) => s + kreditZinsen(k), 0)
   const gesamtTilgung = kredite.reduce((s, k) => s + kreditTilgung(k), 0)
   const gesamtHausgeld = kredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
@@ -1008,8 +1009,8 @@ function FinanzierungTab({ immobilie, onSave }) {
           <p className="label mb-3">Monatlicher Cashflow</p>
           <div className="space-y-2 text-sm">
             {warmmiete > 0 && <>
-              <div className="flex justify-between"><span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''}</span><span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte?.kaltmiete || 0)}</span></div>
-              {(aktiveMietwerte?.nebenkosten || 0) > 0 && <div className="flex justify-between"><span className="text-navy-400">Nebenkosten</span><span className="text-brand-600 font-medium">+ {euro(aktiveMietwerte.nebenkosten)}</span></div>}
+              <div className="flex justify-between"><span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''} gesamt</span><span className="text-brand-600 font-medium">+ {euro(gesamtKaltmiete)}</span></div>
+              {gesamtNebenkosten > 0 && <div className="flex justify-between"><span className="text-navy-400">Nebenkosten gesamt</span><span className="text-brand-600 font-medium">+ {euro(gesamtNebenkosten)}</span></div>}
               {mwstAktiv && <div className="flex justify-between text-amber-600 text-xs"><span>MwSt. {mwstSatz}% (durchlaufend)</span><span>→ Finanzamt</span></div>}
             </>}
             {gesamtZinsen > 0 && <div className="flex justify-between"><span className="text-navy-400">Zinsen gesamt</span><span className="text-red-500">− {euro(gesamtZinsen)}</span></div>}
@@ -2489,15 +2490,17 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen, userEmail }
   const [aktiverTab, setAktiverTab] = useState('uebersicht')
   const sichtbareTabs = TABS.filter(t => !t.adminOnly || userEmail === ADMIN_EMAIL)
 
-  const aktiverMieter = (immobilie.mieter || []).find(m => istAktiv(m))
   const alleKredite = immobilie.kredite?.length > 0
     ? immobilie.kredite
     : (immobilie.finanzierung && (immobilie.finanzierung.zinssatz || immobilie.finanzierung.zinsen) ? [immobilie.finanzierung] : [])
   const monatlicheZinsen = alleKredite.reduce((s, k) => s + kreditZinsen(k), 0)
   const monatlicheTilgung = alleKredite.reduce((s, k) => s + kreditTilgung(k), 0)
   const gesamtHausgeld = alleKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
-  const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
-  const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
+  const aktiveMieterDetail = (immobilie.mieter || []).filter(m => istAktiv(m))
+  const warmmiete = aktiveMieterDetail.reduce((s, m) => {
+    const mw = aktuelleMietwerte(m)
+    return s + (mw?.kaltmiete || 0) + (mw?.nebenkosten || 0)
+  }, 0)
   const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - gesamtHausgeld
   const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
 
@@ -2631,18 +2634,20 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {immobilien.map(immo => {
-            const aktiverMieter = (immo.mieter || []).find(m => istAktiv(m))
+            const aktiveMieterListe = (immo.mieter || []).filter(m => istAktiv(m))
             const immoKredite = immo.kredite?.length > 0
               ? immo.kredite
               : (immo.finanzierung && (immo.finanzierung.zinssatz || immo.finanzierung.zinsen) ? [immo.finanzierung] : [])
             const monatlicheZinsen = immoKredite.reduce((s, k) => s + kreditZinsen(k), 0)
             const monatlicheTilgung = immoKredite.reduce((s, k) => s + kreditTilgung(k), 0)
-            const aktiveMietwerte = aktiverMieter ? aktuelleMietwerte(aktiverMieter) : null
-            const warmmiete = (aktiveMietwerte?.kaltmiete || 0) + (aktiveMietwerte?.nebenkosten || 0)
+            const warmmiete = aktiveMieterListe.reduce((s, m) => {
+              const mw = aktuelleMietwerte(m)
+              return s + (mw?.kaltmiete || 0) + (mw?.nebenkosten || 0)
+            }, 0)
             const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - immoKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
-            const immoMwstAktiv = aktiverMieter?.mwst_aktiv
+            const immoMwstAktiv = aktiveMieterListe.some(m => m.mwst_aktiv)
             const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
-            const hatAktiv = !!aktiverMieter
+            const hatAktiv = aktiveMieterListe.length > 0
 
             return (
               <button key={immo.id} onClick={() => onAuswaehlen(immo.id)}
