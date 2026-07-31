@@ -988,31 +988,43 @@ function FinanzierungTab({ immobilie, onSave }) {
     speichereKredite(neu)
   }
 
-  // Cashflow über alle Kredite und alle aktiven Mieter summiert
+  // Cashflow: nur Kaltmiete relevant, Nebenkosten sind durchlaufende Posten
   const aktiveMieter = (immobilie.mieter || []).filter(m => istAktiv(m))
   const gesamtKaltmiete = aktiveMieter.reduce((s, m) => s + (aktuelleMietwerte(m)?.kaltmiete || 0), 0)
   const gesamtNebenkosten = aktiveMieter.reduce((s, m) => s + (aktuelleMietwerte(m)?.nebenkosten || 0), 0)
-  const warmmiete = gesamtKaltmiete + gesamtNebenkosten
   const mwstAktiv = aktiveMieter.some(m => m.mwst_aktiv)
   const mwstSatz = aktiveMieter.find(m => m.mwst_aktiv)?.mwst_satz || 19
   const gesamtZinsen = kredite.reduce((s, k) => s + kreditZinsen(k), 0)
   const gesamtTilgung = kredite.reduce((s, k) => s + kreditTilgung(k), 0)
   const gesamtHausgeld = kredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
   const gesamtBelastung = gesamtZinsen + gesamtTilgung + gesamtHausgeld
-  const cashflow = warmmiete - gesamtBelastung
+  const cashflow = gesamtKaltmiete - gesamtBelastung
 
   return (
     <div className="space-y-6">
       {/* Cashflow */}
-      {(warmmiete > 0 || gesamtBelastung > 0) && (
+      {(gesamtKaltmiete > 0 || gesamtBelastung > 0) && (
         <div className="card" style={{ borderLeftWidth: '4px', borderLeftColor: '#321f13' }}>
           <p className="label mb-3">Monatlicher Cashflow</p>
           <div className="space-y-2 text-sm">
-            {warmmiete > 0 && <>
-              <div className="flex justify-between"><span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''} gesamt</span><span className="text-brand-600 font-medium">+ {euro(gesamtKaltmiete)}</span></div>
-              {gesamtNebenkosten > 0 && <div className="flex justify-between"><span className="text-navy-400">Nebenkosten gesamt</span><span className="text-brand-600 font-medium">+ {euro(gesamtNebenkosten)}</span></div>}
-              {mwstAktiv && <div className="flex justify-between text-amber-600 text-xs"><span>MwSt. {mwstSatz}% (durchlaufend)</span><span>→ Finanzamt</span></div>}
-            </>}
+            {gesamtKaltmiete > 0 && (
+              <div className="flex justify-between">
+                <span className="text-navy-400">Kaltmiete{mwstAktiv ? ' (Netto)' : ''} gesamt</span>
+                <span className="text-brand-600 font-medium">+ {euro(gesamtKaltmiete)}</span>
+              </div>
+            )}
+            {gesamtNebenkosten > 0 && (
+              <div className="flex justify-between text-xs text-navy-400 italic">
+                <span>Nebenkosten gesamt (durchlaufend)</span>
+                <span>{euro(gesamtNebenkosten)} → Mieter</span>
+              </div>
+            )}
+            {mwstAktiv && (
+              <div className="flex justify-between text-amber-600 text-xs">
+                <span>MwSt. {mwstSatz}% (durchlaufend)</span>
+                <span>→ Finanzamt</span>
+              </div>
+            )}
             {gesamtZinsen > 0 && <div className="flex justify-between"><span className="text-navy-400">Zinsen gesamt</span><span className="text-red-500">− {euro(gesamtZinsen)}</span></div>}
             {gesamtTilgung > 0 && <div className="flex justify-between"><span className="text-navy-400">Tilgung gesamt</span><span className="text-red-500">− {euro(gesamtTilgung)}</span></div>}
             {gesamtHausgeld > 0 && <div className="flex justify-between"><span className="text-navy-400">Hausgeld</span><span className="text-red-500">− {euro(gesamtHausgeld)}</span></div>}
@@ -2497,12 +2509,9 @@ function ImmobilieDetail({ immobilie, onSave, onZurueck, onLoeschen, userEmail }
   const monatlicheTilgung = alleKredite.reduce((s, k) => s + kreditTilgung(k), 0)
   const gesamtHausgeld = alleKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
   const aktiveMieterDetail = (immobilie.mieter || []).filter(m => istAktiv(m))
-  const warmmiete = aktiveMieterDetail.reduce((s, m) => {
-    const mw = aktuelleMietwerte(m)
-    return s + (mw?.kaltmiete || 0) + (mw?.nebenkosten || 0)
-  }, 0)
-  const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - gesamtHausgeld
-  const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
+  const gesamtKaltmieteDetail = aktiveMieterDetail.reduce((s, m) => s + (aktuelleMietwerte(m)?.kaltmiete || 0), 0)
+  const cashflow = gesamtKaltmieteDetail - monatlicheZinsen - monatlicheTilgung - gesamtHausgeld
+  const hatCashflow = gesamtKaltmieteDetail > 0 || monatlicheZinsen > 0
 
   return (
     <div className="space-y-6">
@@ -2640,13 +2649,11 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
               : (immo.finanzierung && (immo.finanzierung.zinssatz || immo.finanzierung.zinsen) ? [immo.finanzierung] : [])
             const monatlicheZinsen = immoKredite.reduce((s, k) => s + kreditZinsen(k), 0)
             const monatlicheTilgung = immoKredite.reduce((s, k) => s + kreditTilgung(k), 0)
-            const warmmiete = aktiveMieterListe.reduce((s, m) => {
-              const mw = aktuelleMietwerte(m)
-              return s + (mw?.kaltmiete || 0) + (mw?.nebenkosten || 0)
-            }, 0)
-            const cashflow = warmmiete - monatlicheZinsen - monatlicheTilgung - immoKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
+            const gesamtKaltmiete = aktiveMieterListe.reduce((s, m) => s + (aktuelleMietwerte(m)?.kaltmiete || 0), 0)
+            const gesamtNebenkostenListe = aktiveMieterListe.reduce((s, m) => s + (aktuelleMietwerte(m)?.nebenkosten || 0), 0)
+            const cashflow = gesamtKaltmiete - monatlicheZinsen - monatlicheTilgung - immoKredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
             const immoMwstAktiv = aktiveMieterListe.some(m => m.mwst_aktiv)
-            const hatCashflow = warmmiete > 0 || monatlicheZinsen > 0
+            const hatCashflow = gesamtKaltmiete > 0 || monatlicheZinsen > 0
             const hatAktiv = aktiveMieterListe.length > 0
 
             return (
@@ -2671,10 +2678,16 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
                 </div>
                 {hatCashflow && (
                   <div className="border-t border-navy-50 pt-3 mt-3 space-y-1">
-                    {warmmiete > 0 && (
+                    {gesamtKaltmiete > 0 && (
                       <div className="flex justify-between text-xs">
-                        <span className="text-navy-400">Warmmiete{immoMwstAktiv ? ' (Netto)' : ''}</span>
-                        <span className="text-brand-600 font-medium">+ {euro(warmmiete)}</span>
+                        <span className="text-navy-400">Kaltmiete{immoMwstAktiv ? ' (Netto)' : ''}</span>
+                        <span className="text-brand-600 font-medium">+ {euro(gesamtKaltmiete)}</span>
+                      </div>
+                    )}
+                    {gesamtNebenkostenListe > 0 && (
+                      <div className="flex justify-between text-xs text-navy-400 italic">
+                        <span>Nebenkosten (durchlaufend)</span>
+                        <span>{euro(gesamtNebenkostenListe)}</span>
                       </div>
                     )}
                     {monatlicheZinsen > 0 && (
