@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2, Edit2, Check, X, Home, Car, Shield, PiggyBank, Tv, Heart, CreditCard, Baby, MoreHorizontal } from 'lucide-react'
-import { FIXKOSTEN_KATEGORIEN, INTERVALL_OPTIONEN, MONATE, monatlicherBetrag } from '../data/kategorien'
+import { FIXKOSTEN_KATEGORIEN, INTERVALL_OPTIONEN, MONATE, monatlicherBetrag, istSparEintrag } from '../data/kategorien'
 import KategorieSelect from './KategorieSelect'
 
 const LEER = { name: '', kategorie: '', kategorieGruppe: null, betrag: '', intervall: 'monatlich', abbuchungsmonat: new Date().getMonth() + 1 }
@@ -79,7 +79,8 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
     setFormular(LEER); setBearbeitungId(null); setFehler({}); setFormularOffen(false)
   }
 
-  const gesamtMonatlich = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const gesamtMonatlich = fixkosten.filter(f => !istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const gesamtSparMonatlich = fixkosten.filter(f => istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
 
   // Gruppenreihenfolge aus FIXKOSTEN_KATEGORIEN
   const gruppenReihenfolge = FIXKOSTEN_KATEGORIEN.map(g => g.gruppe)
@@ -159,8 +160,11 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
           <p className="text-sm text-navy-400 mt-1">Fixkosten + geschätzte monatliche Ausgaben</p>
         </div>
         <div className="text-right shrink-0 ml-4">
-          <p className="label mb-0">Monatliche Belastung</p>
+          <p className="label mb-0">Monatliche Ausgaben</p>
           <p className="text-xl font-bold text-navy-700">{euro(gesamtMonatlich)}</p>
+          {gesamtSparMonatlich > 0 && (
+            <p className="text-xs text-amber-600 mt-0.5">+ {euro(gesamtSparMonatlich)} Spareinlagen</p>
+          )}
         </div>
       </div>
 
@@ -249,9 +253,17 @@ export default function FixkostenSeite({ fixkosten, setFixkosten }) {
 
       {/* Gesamt-Fußzeile */}
       {fixkosten.length > 0 && (
-        <div className="card flex justify-between items-center" style={{ borderLeftWidth: '4px', borderLeftColor: '#6b5c4d' }}>
-          <span className="text-sm font-medium text-navy-600">Gesamt monatliche Belastung</span>
-          <span className="text-xl font-bold text-navy-700">{euro(gesamtMonatlich)}</span>
+        <div className="card" style={{ borderLeftWidth: '4px', borderLeftColor: '#6b5c4d' }}>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-navy-600">Monatliche Ausgaben</span>
+            <span className="text-xl font-bold text-navy-700">{euro(gesamtMonatlich)}</span>
+          </div>
+          {gesamtSparMonatlich > 0 && (
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-xs text-amber-600">Spareinlagen (nicht als Ausgabe gewertet)</span>
+              <span className="text-sm font-semibold text-amber-600">+ {euro(gesamtSparMonatlich)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
