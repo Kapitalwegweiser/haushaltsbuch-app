@@ -1,3 +1,6 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { pruefeRateLimit } from '../_shared/ratelimit.ts'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -8,6 +11,10 @@ Deno.serve(async (req) => {
 
   try {
     const { immobilie, steuerjahr } = await req.json()
+
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+    const rl = await pruefeRateLimit(req, 'steuercheck-immobilie', supabase)
+    if (!rl.ok) return rl.fehler!
 
     // Daten für das gewählte Steuerjahr aufbereiten
     const jahr = String(steuerjahr)

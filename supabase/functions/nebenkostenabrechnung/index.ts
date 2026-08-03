@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { pruefeRateLimit } from '../_shared/ratelimit.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,9 @@ Deno.serve(async (req) => {
     const { pfad, mieter, grundsteuer_betrag, abrechnungsjahr, wohnflaeche_mieter, gesamtflaeche } = await req.json()
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+    const rl = await pruefeRateLimit(req, 'nebenkostenabrechnung', supabase)
+    if (!rl.ok) return rl.fehler!
     const { data, error } = await supabase.storage.from('dokumente').download(pfad)
     if (error) throw new Error(`Storage: ${error.message}`)
 
