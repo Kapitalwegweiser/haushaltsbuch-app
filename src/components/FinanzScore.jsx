@@ -156,7 +156,7 @@ export default function FinanzScore({ fixkosten, einnahmen }) {
     hatAusgaben: fixkosten.length > 0,
   })
 
-  const einblicke = generiereEinblicke({ einnahmen, fixkosten, sparquote, ausgabenquote, sparBetrag: sparBetrag + fixSparSumme })
+  const einblicke = generiereEinblicke({ einnahmen, fixkosten, sparquote, ausgabenquote, sparBetrag })
 
   return (
     <div className="space-y-6">
