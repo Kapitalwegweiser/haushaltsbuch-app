@@ -1,13 +1,137 @@
 import { useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { monatlicherBetrag, monatlicheEinnahme, istSparEintrag, MONATE } from '../data/kategorien'
-import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle } from 'lucide-react'
+import { TrendingUp, List, PiggyBank, Target, Calendar, AlertCircle, Home, ChevronDown, ChevronUp } from 'lucide-react'
+
+function istMieterAktiv(m) {
+  if (!m.mietbeginn) return false
+  const h = new Date().toISOString().slice(0, 10)
+  if (m.mietbeginn > h) return false
+  if (m.mietende && m.mietende < h) return false
+  return true
+}
+
+function aktuelleMietwerte(mieter) {
+  const heute = new Date().toISOString().slice(0, 10)
+  const staffeln = (mieter.mietstaffeln || []).filter(s => s.datum <= heute).sort((a, b) => b.datum.localeCompare(a.datum))
+  if (staffeln.length > 0) return staffeln[0]
+  return { kaltmiete: mieter.kaltmiete || 0, nebenkosten: mieter.nebenkosten || 0 }
+}
+
+function kreditZinsen(k) {
+  return Math.round(((+k.betrag || 0) * (+k.zinssatz || 0) / 100 / 12) * 100) / 100
+}
+function kreditTilgung(k) {
+  return Math.round(((+k.betrag || 0) * (+k.tilgung || 0) / 100 / 12) * 100) / 100
+}
+
+function immoKennzahlen(immo) {
+  const kredite = immo.kredite?.length > 0 ? immo.kredite : (immo.finanzierung ? [immo.finanzierung] : [])
+  const aktiveMieter = (immo.mieter || []).filter(m => istMieterAktiv(m))
+  const kaltmiete = aktiveMieter.reduce((s, m) => s + (aktuelleMietwerte(m)?.kaltmiete || 0), 0)
+  const zinsen = kredite.reduce((s, k) => s + kreditZinsen(k), 0)
+  const tilgung = kredite.reduce((s, k) => s + kreditTilgung(k), 0)
+  const hausgeld = kredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
+  const belastung = zinsen + tilgung + hausgeld
+  return { kaltmiete, zinsen, tilgung, hausgeld, belastung, cashflow: kaltmiete - belastung }
+}
+
+function ImmobilienUebersicht({ immobilien }) {
+  const [offen, setOffen] = useState(false)
+  if (!immobilien || immobilien.length === 0) return null
+
+  const kennzahlen = immobilien.map(immo => ({ immo, ...immoKennzahlen(immo) }))
+  const gesamt = kennzahlen.reduce((s, k) => ({
+    kaltmiete: s.kaltmiete + k.kaltmiete,
+    belastung: s.belastung + k.belastung,
+    zinsen: s.zinsen + k.zinsen,
+    tilgung: s.tilgung + k.tilgung,
+    hausgeld: s.hausgeld + k.hausgeld,
+    cashflow: s.cashflow + k.cashflow,
+  }), { kaltmiete: 0, belastung: 0, zinsen: 0, tilgung: 0, hausgeld: 0, cashflow: 0 })
+
+  const positivCount = kennzahlen.filter(k => k.cashflow >= 0).length
+
+  return (
+    <div className="card">
+      <button className="w-full flex items-center justify-between" onClick={() => setOffen(!offen)}>
+        <h3 className="font-serif font-semibold text-navy-700 flex items-center gap-2">
+          <Home size={16} className="text-brand-500" />
+          Immobilien-Übersicht ({immobilien.length} Objekte)
+        </h3>
+        {offen ? <ChevronUp size={16} className="text-navy-400" /> : <ChevronDown size={16} className="text-navy-400" />}
+      </button>
+
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        <div className="rounded-xl p-3 text-center" style={{ background: '#edf7f2' }}>
+          <p className="text-xs text-navy-400 mb-1">Mieteinnahmen</p>
+          <p className="text-base font-bold text-brand-600">{euro(gesamt.kaltmiete)}</p>
+          <p className="text-xs text-navy-400">/ Mo.</p>
+        </div>
+        <div className="rounded-xl p-3 text-center" style={{ background: '#ede6d8' }}>
+          <p className="text-xs text-navy-400 mb-1">Kreditbelastung</p>
+          <p className="text-base font-bold text-navy-700">{euro(gesamt.belastung)}</p>
+          <p className="text-xs text-navy-400">/ Mo.</p>
+        </div>
+        <div className={`rounded-xl p-3 text-center ${gesamt.cashflow >= 0 ? '' : 'bg-red-50'}`}
+          style={gesamt.cashflow >= 0 ? { background: '#f0eeff' } : {}}>
+          <p className="text-xs text-navy-400 mb-1">Gesamt-Cashflow</p>
+          <p className={`text-base font-bold ${gesamt.cashflow >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
+            {gesamt.cashflow >= 0 ? '+' : ''}{euro(gesamt.cashflow)}
+          </p>
+          <p className="text-xs text-navy-400">/ Mo.</p>
+        </div>
+      </div>
+
+      {positivCount < immobilien.length && (
+        <p className="text-xs text-amber-600 mt-2">
+          ⚠ {immobilien.length - positivCount} von {immobilien.length} Objekten mit negativem Cashflow
+        </p>
+      )}
+
+      {offen && (
+        <div className="mt-4 space-y-2">
+          <div className="text-xs text-navy-400 grid grid-cols-4 gap-2 px-1 font-medium">
+            <span>Objekt</span>
+            <span className="text-right">Miete</span>
+            <span className="text-right">Belastung</span>
+            <span className="text-right">Cashflow</span>
+          </div>
+          {kennzahlen.map(({ immo, kaltmiete, belastung, cashflow }) => (
+            <div key={immo.id} className="grid grid-cols-4 gap-2 px-1 py-2 rounded-lg text-sm border"
+              style={{ borderColor: '#f0e8dc', background: '#faf8f4' }}>
+              <span className="font-medium text-navy-700 truncate">{immo.name || 'Objekt'}</span>
+              <span className="text-right text-brand-600 font-semibold">{euro(kaltmiete)}</span>
+              <span className="text-right text-navy-600">{euro(belastung)}</span>
+              <span className={`text-right font-bold ${cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}`}>
+                {cashflow >= 0 ? '+' : ''}{euro(cashflow)}
+              </span>
+            </div>
+          ))}
+          <div className="grid grid-cols-4 gap-2 px-1 py-2 rounded-lg text-sm font-bold border-t-2 mt-1"
+            style={{ borderColor: '#6b5c4d' }}>
+            <span className="text-navy-700">Gesamt</span>
+            <span className="text-right text-brand-600">{euro(gesamt.kaltmiete)}</span>
+            <span className="text-right text-navy-600">{euro(gesamt.belastung)}</span>
+            <span className={`text-right ${gesamt.cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}`}>
+              {gesamt.cashflow >= 0 ? '+' : ''}{euro(gesamt.cashflow)}
+            </span>
+          </div>
+          {gesamt.zinsen > 0 && (
+            <p className="text-xs text-navy-400 mt-1 px-1">
+              Belastung = Zinsen ({euro(gesamt.zinsen)}) + Tilgung ({euro(gesamt.tilgung)}) + Hausgeld ({euro(gesamt.hausgeld)})
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 }
 
-// Abos/Vereine nutzen dasselbe Intervall-Schema wie Versicherungen (monatlich/vierteljaehrlich/halbjaehrlich/jaehrlich)
 function jahresbetragTracker(v) {
   const b = parseFloat(v.beitrag) || 0
   if (v.intervall === 'monatlich')        return b * 12
@@ -133,13 +257,12 @@ function JahresKostenKalender({ fixkosten }) {
   )
 }
 
-export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [] }) {
+export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [], immobilien = [] }) {
   const fixAusgaben = fixkosten.filter(f => !istSparEintrag(f))
   const fixSpareinlagen = fixkosten.filter(f => istSparEintrag(f))
   const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const fixSparSumme = fixSpareinlagen.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
-  // Abos sind seit der Zusammenführung Teil von fixkosten — kein separates abosSumme
   const gesamtAusgaben = fixSumme + vereineSumme
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
   const sparBetrag = einnahmenSumme - gesamtAusgaben
@@ -168,7 +291,6 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
     <div className="space-y-6">
       <h2 className="section-title mb-0">Dashboard</h2>
 
-      {/* KPI Cards */}
       <div className="flex flex-col gap-3">
         <div className="card flex items-center gap-3">
           <div className="rounded-lg p-2.5 shrink-0" style={{ background: '#edf7f2' }}>
@@ -222,6 +344,8 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
           <p className="text-sm text-navy-400">Trag zuerst deine Einnahmen und monatlichen Ausgaben ein.</p>
         </div>
       )}
+
+      <ImmobilienUebersicht immobilien={immobilien} />
 
       <JahresKostenKalender fixkosten={fixkosten} />
 
