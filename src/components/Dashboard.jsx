@@ -62,6 +62,7 @@ function ImmobilienUebersicht({ immobilien }) {
         {offen ? <ChevronUp size={16} className="text-navy-400" /> : <ChevronDown size={16} className="text-navy-400" />}
       </button>
 
+      {/* Gesamt-Cashflow immer sichtbar */}
       <div className="mt-3 grid grid-cols-3 gap-3">
         <div className="rounded-xl p-3 text-center" style={{ background: '#edf7f2' }}>
           <p className="text-xs text-navy-400 mb-1">Mieteinnahmen</p>
@@ -89,6 +90,7 @@ function ImmobilienUebersicht({ immobilien }) {
         </p>
       )}
 
+      {/* Detailtabelle aufklappbar */}
       {offen && (
         <div className="mt-4 space-y-2">
           <div className="text-xs text-navy-400 grid grid-cols-4 gap-2 px-1 font-medium">
@@ -132,6 +134,7 @@ function euro(n) {
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 }
 
+// Abos/Vereine nutzen dasselbe Intervall-Schema wie Versicherungen (monatlich/vierteljaehrlich/halbjaehrlich/jaehrlich)
 function jahresbetragTracker(v) {
   const b = parseFloat(v.beitrag) || 0
   if (v.intervall === 'monatlich')        return b * 12
@@ -263,6 +266,7 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
   const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const fixSparSumme = fixSpareinlagen.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
+  // Abos sind seit der Zusammenführung Teil von fixkosten — kein separates abosSumme
   const gesamtAusgaben = fixSumme + vereineSumme
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
   const sparBetrag = einnahmenSumme - gesamtAusgaben
@@ -291,6 +295,7 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
     <div className="space-y-6">
       <h2 className="section-title mb-0">Dashboard</h2>
 
+      {/* KPI Cards */}
       <div className="flex flex-col gap-3">
         <div className="card flex items-center gap-3">
           <div className="rounded-lg p-2.5 shrink-0" style={{ background: '#edf7f2' }}>

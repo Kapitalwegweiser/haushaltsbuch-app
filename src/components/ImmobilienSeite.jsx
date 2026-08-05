@@ -2668,6 +2668,56 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
           <button className="btn-primary mx-auto" onClick={onNeu}><Plus size={15} /> Erste Immobilie anlegen</button>
         </div>
       ) : (
+        <>
+        {immobilien.length > 1 && (() => {
+          const alle = immobilien.map(immo => {
+            const aktiv = (immo.mieter || []).filter(m => istAktiv(m))
+            const kredite = immo.kredite?.length > 0 ? immo.kredite : (immo.finanzierung && (immo.finanzierung.zinssatz || immo.finanzierung.zinsen) ? [immo.finanzierung] : [])
+            const kaltmiete = aktiv.reduce((s, m) => s + (aktuelleMietwerte(m)?.kaltmiete || 0), 0)
+            const zinsen = kredite.reduce((s, k) => s + kreditZinsen(k), 0)
+            const tilgung = kredite.reduce((s, k) => s + kreditTilgung(k), 0)
+            const hausgeld = kredite.reduce((s, k) => s + (+k.hausgeld || 0), 0)
+            const cashflow = kaltmiete - zinsen - tilgung - hausgeld
+            return { kaltmiete, zinsen, tilgung, hausgeld, cashflow }
+          })
+          const g = alle.reduce((s, k) => ({
+            kaltmiete: s.kaltmiete + k.kaltmiete,
+            zinsen: s.zinsen + k.zinsen,
+            tilgung: s.tilgung + k.tilgung,
+            hausgeld: s.hausgeld + k.hausgeld,
+            cashflow: s.cashflow + k.cashflow,
+          }), { kaltmiete: 0, zinsen: 0, tilgung: 0, hausgeld: 0, cashflow: 0 })
+          const belastung = g.zinsen + g.tilgung + g.hausgeld
+          const negativ = alle.filter(k => k.cashflow < 0).length
+          return (
+            <div className="card mb-2">
+              <h3 className="font-serif font-semibold text-navy-700 mb-3 text-sm">Gesamtübersicht — {immobilien.length} Objekte</h3>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="rounded-xl p-3 text-center" style={{ background: '#edf7f2' }}>
+                  <p className="text-xs text-navy-400 mb-1">Mieteinnahmen</p>
+                  <p className="text-sm font-bold text-brand-600">{euro(g.kaltmiete)}</p>
+                  <p className="text-xs text-navy-400">/ Mo.</p>
+                </div>
+                <div className="rounded-xl p-3 text-center" style={{ background: '#ede6d8' }}>
+                  <p className="text-xs text-navy-400 mb-1">Kreditbelastung</p>
+                  <p className="text-sm font-bold text-navy-700">{euro(belastung)}</p>
+                  <p className="text-xs text-navy-400">/ Mo.</p>
+                </div>
+                <div className={`rounded-xl p-3 text-center`} style={{ background: g.cashflow >= 0 ? '#f0eeff' : '#fff0f0' }}>
+                  <p className="text-xs text-navy-400 mb-1">Gesamt-Cashflow</p>
+                  <p className={`text-sm font-bold ${g.cashflow >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
+                    {g.cashflow >= 0 ? '+' : ''}{euro(g.cashflow)}
+                  </p>
+                  <p className="text-xs text-navy-400">/ Mo.</p>
+                </div>
+              </div>
+              <p className="text-xs text-navy-400">
+                Belastung = Zinsen {euro(g.zinsen)} + Tilgung {euro(g.tilgung)} + Hausgeld {euro(g.hausgeld)}
+                {negativ > 0 && <span className="text-amber-600 ml-2">· ⚠ {negativ} Objekt{negativ > 1 ? 'e' : ''} mit negativem Cashflow</span>}
+              </p>
+            </div>
+          )
+        })()}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {immobilien.map(immo => {
             const aktiveMieterListe = (immo.mieter || []).filter(m => istAktiv(m))
@@ -2747,6 +2797,7 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
             )
           })}
         </div>
+        </>
       )}
     </div>
   )
