@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { monatlicherBetrag, monatlicheEinnahme } from '../data/kategorien'
+import { monatlicherBetrag, monatlicheEinnahme, istSparEintrag } from '../data/kategorien'
 import { TrendingUp, Info, PiggyBank, Sparkles } from 'lucide-react'
 
 function euro(n) {
@@ -50,8 +50,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Wachstumsprognose({ einnahmen, fixkosten }) {
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
-  const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
-  const berechnetesSpar = Math.max(0, Math.round(einnahmenSumme - fixSumme))
+  const fixAusgaben = fixkosten.filter(f => !istSparEintrag(f))
+  const fixSparSumme = fixkosten.filter(f => istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const berechnetesSpar = Math.max(0, Math.round((einnahmenSumme - fixSumme) + fixSparSumme))
 
   const [monatlichSpar, setMonatlichSpar] = useState(berechnetesSpar || 300)
   const [jahre, setJahre] = useState(20)

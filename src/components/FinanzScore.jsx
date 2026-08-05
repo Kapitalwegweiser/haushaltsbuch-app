@@ -1,4 +1,4 @@
-import { monatlicherBetrag, monatlicheEinnahme } from '../data/kategorien'
+import { monatlicherBetrag, monatlicheEinnahme, istSparEintrag } from '../data/kategorien'
 import { TrendingUp, AlertTriangle, CheckCircle, Info, Star, Lightbulb } from 'lucide-react'
 
 function euro(n) {
@@ -143,8 +143,12 @@ const EINBLICK_STILE = {
 
 export default function FinanzScore({ fixkosten, einnahmen }) {
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
-  const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
-  const sparquote = einnahmenSumme > 0 ? ((einnahmenSumme - fixSumme) / einnahmenSumme) * 100 : 0
+  const fixAusgaben = fixkosten.filter(f => !istSparEintrag(f))
+  const fixSpareinlagen = fixkosten.filter(f => istSparEintrag(f))
+  const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const fixSparSumme = fixSpareinlagen.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+  const sparBetrag = einnahmenSumme - fixSumme
+  const sparquote = einnahmenSumme > 0 ? ((sparBetrag + fixSparSumme) / einnahmenSumme) * 100 : 0
   const ausgabenquote = einnahmenSumme > 0 ? (fixSumme / einnahmenSumme) * 100 : 0
 
   const { score, details } = berechneScore({
