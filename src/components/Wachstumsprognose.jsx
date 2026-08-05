@@ -53,7 +53,7 @@ export default function Wachstumsprognose({ einnahmen, fixkosten }) {
   const fixAusgaben = fixkosten.filter(f => !istSparEintrag(f))
   const fixSparSumme = fixkosten.filter(f => istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
-  const berechnetesSpar = Math.max(0, Math.round((einnahmenSumme - fixSumme) + fixSparSumme))
+  const berechnetesSpar = Math.max(0, Math.round(einnahmenSumme - fixSumme))
 
   const [monatlichSpar, setMonatlichSpar] = useState(berechnetesSpar || 300)
   const [jahre, setJahre] = useState(20)
