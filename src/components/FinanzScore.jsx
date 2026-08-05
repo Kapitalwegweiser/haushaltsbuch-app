@@ -47,11 +47,10 @@ function berechneScore({ sparquote, ausgabenquote, hatEinnahmen, hatAusgaben }) 
   return { score: Math.round(punkte), details }
 }
 
-function generiereEinblicke({ einnahmen, fixkosten, sparquote, ausgabenquote }) {
+function generiereEinblicke({ einnahmen, fixkosten, sparquote, ausgabenquote, sparBetrag }) {
   const einblicke = []
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
-  const fixSumme = fixkosten.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
-  const sparBetrag = einnahmenSumme - fixSumme
+  const fixSumme = fixkosten.filter(f => !istSparEintrag(f)).reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
 
   if (einnahmenSumme > 0) {
     if (sparquote >= 20) {
@@ -157,7 +156,7 @@ export default function FinanzScore({ fixkosten, einnahmen }) {
     hatAusgaben: fixkosten.length > 0,
   })
 
-  const einblicke = generiereEinblicke({ einnahmen, fixkosten, sparquote, ausgabenquote })
+  const einblicke = generiereEinblicke({ einnahmen, fixkosten, sparquote, ausgabenquote, sparBetrag: sparBetrag + fixSparSumme })
 
   return (
     <div className="space-y-6">
