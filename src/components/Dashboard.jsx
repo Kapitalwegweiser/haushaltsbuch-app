@@ -350,8 +350,6 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
         </div>
       )}
 
-      <ImmobilienUebersicht immobilien={immobilien} />
-
       <JahresKostenKalender fixkosten={fixkosten} />
 
       {(einnahmen.length > 0 || fixkosten.length > 0) && (

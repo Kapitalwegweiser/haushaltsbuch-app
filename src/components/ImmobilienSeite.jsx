@@ -2692,29 +2692,33 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
           return (
             <div className="card mb-2">
               <h3 className="font-serif font-semibold text-navy-700 mb-3 text-sm">Gesamtübersicht — {immobilien.length} Objekte</h3>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div className="rounded-xl p-3 text-center" style={{ background: '#edf7f2' }}>
-                  <p className="text-xs text-navy-400 mb-1">Mieteinnahmen</p>
-                  <p className="text-sm font-bold text-brand-600">{euro(g.kaltmiete)}</p>
-                  <p className="text-xs text-navy-400">/ Mo.</p>
+              <div className="space-y-2 mb-3">
+                <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: '#f0e8dc' }}>
+                  <span className="text-sm text-navy-500">Mieteinnahmen gesamt</span>
+                  <span className="text-sm font-bold text-brand-600">+ {euro(g.kaltmiete)} / Mo.</span>
                 </div>
-                <div className="rounded-xl p-3 text-center" style={{ background: '#ede6d8' }}>
-                  <p className="text-xs text-navy-400 mb-1">Kreditbelastung</p>
-                  <p className="text-sm font-bold text-navy-700">{euro(belastung)}</p>
-                  <p className="text-xs text-navy-400">/ Mo.</p>
+                <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: '#f0e8dc' }}>
+                  <span className="text-sm text-navy-500">Zinsen</span>
+                  <span className="text-sm font-medium text-red-500">− {euro(g.zinsen)} / Mo.</span>
                 </div>
-                <div className={`rounded-xl p-3 text-center`} style={{ background: g.cashflow >= 0 ? '#f0eeff' : '#fff0f0' }}>
-                  <p className="text-xs text-navy-400 mb-1">Gesamt-Cashflow</p>
-                  <p className={`text-sm font-bold ${g.cashflow >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
-                    {g.cashflow >= 0 ? '+' : ''}{euro(g.cashflow)}
-                  </p>
-                  <p className="text-xs text-navy-400">/ Mo.</p>
+                <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: '#f0e8dc' }}>
+                  <span className="text-sm text-navy-500">Tilgung</span>
+                  <span className="text-sm font-medium text-red-500">− {euro(g.tilgung)} / Mo.</span>
+                </div>
+                {g.hausgeld > 0 && (
+                  <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: '#f0e8dc' }}>
+                    <span className="text-sm text-navy-500">Hausgeld</span>
+                    <span className="text-sm font-medium text-red-500">− {euro(g.hausgeld)} / Mo.</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-sm font-semibold text-navy-700">Gesamt-Cashflow</span>
+                  <span className={`text-base font-bold ${g.cashflow >= 0 ? 'text-brand-600' : 'text-red-500'}`}>
+                    {g.cashflow >= 0 ? '+' : ''}{euro(g.cashflow)} / Mo.
+                  </span>
                 </div>
               </div>
-              <p className="text-xs text-navy-400">
-                Belastung = Zinsen {euro(g.zinsen)} + Tilgung {euro(g.tilgung)} + Hausgeld {euro(g.hausgeld)}
-                {negativ > 0 && <span className="text-amber-600 ml-2">· ⚠ {negativ} Objekt{negativ > 1 ? 'e' : ''} mit negativem Cashflow</span>}
-              </p>
+              {negativ > 0 && <p className="text-xs text-amber-600">⚠ {negativ} Objekt{negativ > 1 ? 'e' : ''} mit negativem Cashflow</p>}
             </div>
           )
         })()}
