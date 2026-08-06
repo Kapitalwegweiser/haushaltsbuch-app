@@ -166,37 +166,76 @@
   .badge-muted  { @apply badge bg-navy-100 text-navy-500; }
 }
 
-/* ── Dark Mode: Inline-Style Overrides ── */
-/* Grüne Tint-Hintergründe */
-.dark [style*="#edf7f2"] { background: var(--bg-green-tint) !important; }
+/* ── Dark Mode: Overrides ── */
+
+/* Hintergründe */
+.dark [style*="#edf7f2"],
 .dark [style*="edf7f2"]  { background: var(--bg-green-tint) !important; }
-/* Warme Tint-Hintergründe */
-.dark [style*="#ede6d8"] { background: var(--bg-warm-tint) !important; }
+.dark [style*="#ede6d8"],
 .dark [style*="ede6d8"]  { background: var(--bg-warm-tint) !important; }
-/* Amber Tint */
 .dark [style*="#fdf8ed"] { background: var(--bg-amber-tint) !important; }
-.dark [style*="#fdf8e"]  { background: var(--bg-amber-tint) !important; }
-/* Purple Tint */
 .dark [style*="#f0eeff"] { background: var(--bg-purple-tint) !important; }
-/* Card-Hintergründe */
 .dark [style*="#faf8f4"] { background: var(--bg-hover) !important; }
 .dark [style*="#f7f3ed"] { background: var(--bg-page) !important; }
+.dark [style*="background: '#f0ece6'"] { background: var(--bg-warm-tint) !important; }
+.dark [style*="background: '#fff0f0'"] { background: rgba(220,38,38,0.15) !important; }
+
 /* Border-Farben */
-.dark [style*="borderColor: '#e8dece'"]  { border-color: var(--border) !important; }
-.dark [style*="borderColor: '#f0e8dc'"]  { border-color: var(--border) !important; }
-.dark [style*="borderColor: '#f0ece6'"]  { border-color: var(--border) !important; }
-/* Text-Farben für Tailwind-Klassen */
+.dark [style*="borderColor: '#e8dece'"],
+.dark [style*="borderColor: '#f0e8dc'"],
+.dark [style*="borderColor: '#f0ece6'"],
+.dark [style*="borderColor: '#c0dfd3'"] { border-color: var(--border) !important; }
+.dark [style*="borderLeftColor"] { border-left-color: var(--border) !important; }
+
+/* Text-Farben (Tailwind) */
 .dark .text-navy-700 { color: var(--text-primary) !important; }
 .dark .text-navy-600 { color: var(--text-secondary) !important; }
 .dark .text-navy-500 { color: var(--text-muted) !important; }
 .dark .text-navy-400 { color: var(--text-faint) !important; }
-/* Hintergründe für Tailwind-Klassen */
+
+/* Hintergründe (Tailwind) */
 .dark .bg-white        { background: var(--bg-card) !important; }
 .dark .bg-navy-50      { background: var(--bg-page) !important; }
 .dark .bg-navy-100     { background: var(--bg-warm-tint) !important; }
-.dark .border-navy-100 { border-color: var(--border) !important; }
+.dark .border-navy-50,
+.dark .border-navy-100,
 .dark .border-navy-200 { border-color: var(--border) !important; }
-/* Tabellen / Zeilen */
+
+/* Badges — im Dark Mode aufhellen */
+.dark .bg-brand-500\/10 { background: rgba(46,107,82,0.25) !important; }
+.dark .text-brand-600   { color: #6abf99 !important; }
+.dark .text-brand-500   { color: #6abf99 !important; }
+.dark .bg-amber-50      { background: rgba(201,162,39,0.15) !important; }
+.dark .text-amber-600,
+.dark .text-amber-700   { color: #f0c84a !important; }
+.dark .border-amber-200 { border-color: rgba(201,162,39,0.35) !important; }
+.dark .bg-purple-50     { background: var(--bg-purple-tint) !important; }
+.dark .text-purple-700  { color: #a89fef !important; }
+
+/* Grüne Section-Header (Einnahmen-Seite) */
+.dark .bg-brand-500\/5  { background: rgba(46,107,82,0.2) !important; }
+.dark .border-brand-500\/20 { border-color: rgba(46,107,82,0.4) !important; }
+
+/* Rote Töne */
+.dark .bg-red-50   { background: rgba(220,38,38,0.12) !important; }
+.dark .border-red-200 { border-color: rgba(220,38,38,0.3) !important; }
+.dark .text-red-500,
+.dark .text-red-600 { color: #f87171 !important; }
+
+/* Monatsbadges (Mai, November etc.) */
+.dark .bg-amber-100  { background: rgba(201,162,39,0.2) !important; }
+.dark .text-amber-800 { color: #f0c84a !important; }
+.dark .border-amber-300 { border-color: rgba(201,162,39,0.4) !important; }
+
+/* Kleine Monatlich/Jährlich-Badges */
+.dark [class*="bg-"][class*="rounded-full"] { opacity: 0.95; }
+
+/* Tabellen */
 .dark tr:hover { background: var(--bg-hover) !important; }
-/* Selects in dark */
+.dark tbody tr { border-color: var(--border) !important; }
+
+/* Inputs & Selects */
 .dark select option { background: var(--bg-input); color: var(--text-primary); }
+
+/* Fortschrittsbalken Hintergrund */
+.dark [style*="background: '#e8dece'"] { background: var(--border) !important; }
