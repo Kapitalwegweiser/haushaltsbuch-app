@@ -239,3 +239,32 @@
 
 /* Fortschrittsbalken Hintergrund */
 .dark [style*="background: '#e8dece'"] { background: var(--border) !important; }
+
+/* Weitere helle Hintergründe die überschrieben werden müssen */
+.dark [style*="#f0ece6"] { background: var(--bg-warm-tint) !important; }
+.dark [style*="#f5f5f5"] { background: var(--bg-hover) !important; }
+.dark [style*="#fff3eb"] { background: rgba(184,76,0,0.15) !important; }
+.dark [style*="#e8f5fc"] { background: rgba(26,126,168,0.15) !important; }
+.dark [style*="#fdeef0"] { background: rgba(192,57,75,0.15) !important; }
+.dark [style*="#f0ece6"] { background: var(--bg-warm-tint) !important; }
+.dark [style*="background: 'white'"],
+.dark [style*='background: "white"'] { background: var(--bg-card) !important; }
+
+/* Helle Gruppen-Header in Ausgaben/Versicherungen */
+.dark [style*="bg: '#edf7f2'"] { background: var(--bg-green-tint) !important; }
+
+/* Alle inline background styles mit hellen Farben abfangen */
+.dark [style*="background:#f"],
+.dark [style*="background: #f"] {
+  /* wird durch spezifischere Regeln oben überschrieben */
+}
+
+/* Versicherungen KPI-Karten (haben keine Tailwind-Klasse, nur inline style) */
+.dark .card [style*="background"] {
+  /* Karten-interne Hintergründe abdunkeln wenn nötig */
+}
+
+/* Optimierungshinweise Hintergrund */
+.dark .bg-red-50 { background: rgba(220,38,38,0.12) !important; }
+.dark .bg-amber-50 { background: rgba(201,162,39,0.12) !important; }
+.dark .bg-green-50 { background: rgba(46,107,82,0.12) !important; }

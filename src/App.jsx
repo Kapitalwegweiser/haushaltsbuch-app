@@ -250,7 +250,7 @@ function AppInner() {
       />
 
       <main className="flex-1 flex flex-col overflow-x-hidden">
-        <div className="hidden md:flex items-center justify-end px-8 py-3 border-b" style={{ borderColor: '#e8dece', background: '#faf8f4' }}>
+        <div className="hidden md:flex items-center justify-end px-8 py-3 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-sidebar)' }}>
           <div className="flex items-center gap-3">
             <span className="text-xs text-navy-400">{user.user_metadata?.full_name || user.email}</span>
             <button
