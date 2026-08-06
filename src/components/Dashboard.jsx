@@ -151,9 +151,6 @@ function AusgabenListe({ fixkosten, abos = [], vereine = [] }) {
     const key = f.kategorie || 'Sonstiges'
     nachKat[key] = (nachKat[key] || 0) + monatlicherBetrag(f.betrag, f.intervall)
   })
-  const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
-  if (vereineSumme > 0) nachKat['Vereine'] = (nachKat['Vereine'] || 0) + vereineSumme
-
   const gesamt = Object.values(nachKat).reduce((s, v) => s + v, 0)
   const sortiert = Object.entries(nachKat)
     .map(([name, value]) => ({ name, value }))
@@ -265,9 +262,8 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
   const fixSpareinlagen = fixkosten.filter(f => istSparEintrag(f))
   const fixSumme = fixAusgaben.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
   const fixSparSumme = fixSpareinlagen.reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
-  const vereineSumme = vereine.reduce((s, v) => s + monatsbetragTracker(v), 0)
-  // Abos sind seit der Zusammenführung Teil von fixkosten — kein separates abosSumme
-  const gesamtAusgaben = fixSumme + vereineSumme
+  // Vereine & Abos sind seit der Zusammenführung Teil von fixkosten
+  const gesamtAusgaben = fixSumme
   const einnahmenSumme = einnahmen.reduce((s, e) => s + monatlicheEinnahme(e), 0)
   const sparBetrag = einnahmenSumme - gesamtAusgaben
   const sparquote = einnahmenSumme > 0 ? ((sparBetrag + fixSparSumme) / einnahmenSumme) * 100 : 0
@@ -287,7 +283,7 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
     return {
       monat: name,
       Einnahmen: +(einnahmenSumme + sonderInkl).toFixed(2),
-      Ausgaben: +(monatlicheFixkosten + jahresKosten + vereineSumme).toFixed(2),
+      Ausgaben: +(monatlicheFixkosten + jahresKosten).toFixed(2),
     }
   })
 

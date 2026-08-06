@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useCloudCollection } from './hooks/useCloudCollection'
 import { useCloudJsonCollection } from './hooks/useCloudJsonCollection'
-import { ABO_KATEGORIEN } from './data/kategorien'
+import { ABO_KATEGORIEN, VEREIN_KATEGORIE } from './data/kategorien'
 import Navigation from './components/Navigation'
 import Startseite from './components/Startseite'
 import ProfilSeite from './components/ProfilSeite'
@@ -81,7 +81,7 @@ function AppInner() {
   const [immobilien,    setImmobilien,    immobilienLaden]    = useCloudJsonCollection('immobilien',    user?.id)
   const [versicherungen, setVersicherungen, versicherungenLaden] = useCloudJsonCollection('versicherungen', user?.id)
   const [altAbos,       setAltAbos,       altAbosLaden]       = useCloudJsonCollection('abos',          user?.id)
-  const [vereine,       setVereine,       vereineLaden]        = useCloudJsonCollection('vereine',       user?.id)
+  const [altVereine,    setAltVereine,    altVereineLaden]     = useCloudJsonCollection('vereine',       user?.id)
 
   // Einmalige Migration: alte abos-Sammlung → fixkosten
   const aboMigrationDone = useRef(false)
@@ -105,11 +105,59 @@ function AppInner() {
     setAltAbos([])
   }, [altAbosLaden, fixkostenLaden]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Einmalige Migration: alte vereine-Sammlung → fixkosten
+  const vereinMigrationDone = useRef(false)
+  useEffect(() => {
+    if (altVereineLaden || fixkostenLaden || vereinMigrationDone.current) return
+    vereinMigrationDone.current = true
+    if (altVereine.length === 0) return
+    setFixkosten(prev => {
+      const existingIds = new Set(prev.map(f => f.id))
+      const toAdd = altVereine
+        .filter(v => !existingIds.has(v.id))
+        .map(v => ({
+          id: v.id,
+          name: v.name || v.anbieter || 'Verein',
+          kategorie: VEREIN_KATEGORIE,
+          kategorieGruppe: 'Kinder & Familie',
+          betrag: parseFloat(v.beitrag) || 0,
+          intervall: v.intervall === 'vierteljaehrlich' ? 'quartalsweise' : (v.intervall || 'monatlich'),
+        }))
+      return toAdd.length > 0 ? [...prev, ...toAdd] : prev
+    })
+    setAltVereine([])
+  }, [altVereineLaden, fixkostenLaden]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (authLoading) return <LadeScreen />
   if (!user)       return <LoginSeite />
 
-  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden || altAbosLaden || vereineLaden
+  const dataLaden = einnahmenLaden || fixkostenLaden || immobilienLaden || versicherungenLaden || altAbosLaden || altVereineLaden
   if (dataLaden) return <LadeScreen />
+
+  // Vereine = fixkosten-Einträge mit Vereinsbeitrag-Kategorie (single source of truth)
+  const vereine = fixkosten
+    .filter(f => f.kategorie === VEREIN_KATEGORIE || f.kategorieGruppe === 'Kinder & Familie' && f.kategorie === VEREIN_KATEGORIE)
+    .map(f => ({ id: f.id, name: f.name, anbieter: f.name, beitrag: f.betrag, intervall: f.intervall, notizen: '' }))
+
+  function setVereine(updaterOrValue) {
+    setFixkosten(prev => {
+      const vereinIds = new Set(prev.filter(f => f.kategorie === VEREIN_KATEGORIE).map(f => f.id))
+      const currentVereine = prev
+        .filter(f => vereinIds.has(f.id))
+        .map(f => ({ id: f.id, name: f.name, anbieter: f.name, beitrag: f.betrag, intervall: f.intervall, notizen: '' }))
+      const newVereine = typeof updaterOrValue === 'function' ? updaterOrValue(currentVereine) : updaterOrValue
+      const nonVereine = prev.filter(f => !vereinIds.has(f.id))
+      const newVereinFixkosten = newVereine.map(v => ({
+        id: v.id,
+        name: v.name || v.anbieter || 'Verein',
+        kategorie: VEREIN_KATEGORIE,
+        kategorieGruppe: 'Kinder & Familie',
+        betrag: parseFloat(v.beitrag) || 0,
+        intervall: v.intervall || 'monatlich',
+      }))
+      return [...nonVereine, ...newVereinFixkosten]
+    })
+  }
 
   // Abos = fixkosten-Einträge mit Abo-Kategorie (single source of truth)
   const abos = fixkosten

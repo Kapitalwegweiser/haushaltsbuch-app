@@ -34,6 +34,8 @@ export const MONATE = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ]
 
+export const VEREIN_KATEGORIE = 'Vereinsbeitrag'
+
 export const ABO_KATEGORIEN = new Set(
   FIXKOSTEN_KATEGORIEN.find(g => g.gruppe === 'Abonnements & Medien')?.eintraege ?? []
 )
