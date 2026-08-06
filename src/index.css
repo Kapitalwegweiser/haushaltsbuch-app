@@ -22,24 +22,24 @@
   --text-faint:    #8f7a69;
 }
 
-/* ── CSS-Variablen (Dark Mode) ── */
+/* ── CSS-Variablen (Dark Mode — Marineblau) ── */
 .dark {
-  --bg-page:       #1a1310;
-  --bg-card:       #241c17;
-  --bg-sidebar:    #1e1610;
-  --bg-input:      #2a2018;
-  --bg-hover:      #2e2318;
-  --bg-green-tint: #162820;
-  --bg-warm-tint:  #2a1e14;
-  --bg-amber-tint: #281e0a;
-  --bg-purple-tint:#1a1530;
-  --border:        #3d2e22;
-  --border-sidebar:#3a2b1e;
-  --border-input:  #4a3828;
-  --text-primary:  #f0e8dc;
-  --text-secondary:#d8ccba;
-  --text-muted:    #b8a692;
-  --text-faint:    #8f7a69;
+  --bg-page:       #1e2d3d;
+  --bg-card:       #253447;
+  --bg-sidebar:    #192638;
+  --bg-input:      #2a3d52;
+  --bg-hover:      #2e4158;
+  --bg-green-tint: #1a3328;
+  --bg-warm-tint:  #1e2d3d;
+  --bg-amber-tint: #2a2d1a;
+  --bg-purple-tint:#1e2040;
+  --border:        #2e4560;
+  --border-sidebar:#243550;
+  --border-input:  #344f6a;
+  --text-primary:  #e8f0f8;
+  --text-secondary:#c0d0e0;
+  --text-muted:    #90aac0;
+  --text-faint:    #6888a0;
 }
 
 @layer base {
