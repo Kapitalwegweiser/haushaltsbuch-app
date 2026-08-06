@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useCloudCollection } from './hooks/useCloudCollection'
 import { useCloudJsonCollection } from './hooks/useCloudJsonCollection'
+import { useDarkMode } from './hooks/useDarkMode'
 import { ABO_KATEGORIEN, VEREIN_KATEGORIE } from './data/kategorien'
 import Navigation from './components/Navigation'
 import Startseite from './components/Startseite'
@@ -39,6 +40,7 @@ function AppInner() {
   const { user, loading: authLoading, abmelden, meldetSichAb } = useAuth()
   const [aktivesModul, setAktivesModul] = useState('startseite')
   const [aktiveSeite, setAktiveSeite]   = useState('dashboard')
+  const [dark, setDark] = useDarkMode()
 
   // Bei Login immer zur Startseite + Referral verarbeiten
   const vorigerUser = useRef(null)
@@ -243,6 +245,8 @@ function AppInner() {
         setAktiveSeite={setAktiveSeite}
         abmelden={abmelden}
         meldetSichAb={meldetSichAb}
+        dark={dark}
+        setDark={setDark}
       />
 
       <main className="flex-1 flex flex-col overflow-x-hidden">

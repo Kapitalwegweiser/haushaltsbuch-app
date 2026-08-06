@@ -2,7 +2,8 @@ import { useState } from 'react'
 import {
   LayoutDashboard, List, TrendingUp,
   Menu, X, Award, BarChart2, Home, Wallet,
-  User, ChevronDown, ChevronRight, Building2, Receipt, LogOut, Shield, Tv, Users, Gift
+  User, ChevronDown, ChevronRight, Building2, Receipt, LogOut, Shield, Tv, Users, Gift,
+  Sun, Moon
 } from 'lucide-react'
 
 const BUDGET_ITEMS = [
@@ -118,7 +119,25 @@ function NavInhalt({ aktivesModul, setAktivesModul, aktiveSeite, setAktiveSeite,
   )
 }
 
-export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite, setAktiveSeite, abmelden, meldetSichAb }) {
+function DarkModeToggle({ dark, setDark }) {
+  return (
+    <button
+      onClick={() => setDark(!dark)}
+      className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 nav-link-inactive"
+      title={dark ? 'Light Mode' : 'Dark Mode'}
+    >
+      {dark ? <Sun size={16} /> : <Moon size={16} />}
+      <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
+      <div className="ml-auto w-9 h-5 rounded-full relative transition-colors duration-200 flex items-center"
+        style={{ background: dark ? '#2e6b52' : '#d8ccba' }}>
+        <div className="w-4 h-4 rounded-full bg-white shadow absolute transition-all duration-200"
+          style={{ left: dark ? '18px' : '2px' }} />
+      </div>
+    </button>
+  )
+}
+
+export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite, setAktiveSeite, abmelden, meldetSichAb, dark, setDark }) {
   const [menuOffen, setMenuOffen] = useState(false)
 
   return (
@@ -126,7 +145,7 @@ export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite,
       {/* Desktop Sidebar — hell, cream */}
       <aside
         className="hidden md:flex flex-col w-60 p-5 shrink-0 border-r sticky top-0 h-screen overflow-y-auto"
-        style={{ background: SIDEBAR_BG, borderColor: SIDEBAR_BORDER }}
+        style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)' }}
       >
         {/* Logo */}
         <div className="mb-8 pt-1">
@@ -144,8 +163,9 @@ export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite,
           setAktiveSeite={setAktiveSeite}
         />
 
-        {/* Profil ganz unten */}
-        <div className="mt-auto pt-4 border-t" style={{ borderColor: SIDEBAR_BORDER }}>
+        {/* Dark Mode + Profil ganz unten */}
+        <div className="mt-auto pt-4 border-t space-y-1" style={{ borderColor: 'var(--border-sidebar)' }}>
+          <DarkModeToggle dark={dark} setDark={setDark} />
           <button
             onClick={() => setAktivesModul('profil')}
             className={`nav-link w-full ${aktivesModul === 'profil' ? 'nav-link-active' : 'nav-link-inactive'}`}
@@ -159,7 +179,7 @@ export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite,
       {/* Mobile Top Bar */}
       <header
         className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 border-b"
-        style={{ background: MOBILE_BG, borderColor: SIDEBAR_BORDER }}
+        style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)' }}
       >
         <span className="font-serif text-navy-700 font-semibold text-base tracking-wide">Kapitalwegweiser</span>
         <button onClick={() => setMenuOffen(!menuOffen)} className="text-navy-600 p-1">
@@ -171,7 +191,7 @@ export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite,
       {menuOffen && (
         <div
           className="md:hidden fixed top-12 left-0 right-0 z-40 px-4 pb-4 shadow-md border-b"
-          style={{ background: MOBILE_BG, borderColor: SIDEBAR_BORDER }}
+          style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)' }}
         >
           <div className="mt-2 space-y-1">
             <NavInhalt
@@ -181,7 +201,8 @@ export default function Navigation({ aktivesModul, setAktivesModul, aktiveSeite,
               setAktiveSeite={setAktiveSeite}
               onKlick={() => setMenuOffen(false)}
             />
-            <div className="border-t pt-2 mt-2" style={{ borderColor: SIDEBAR_BORDER }}>
+            <div className="border-t pt-2 mt-2 space-y-1" style={{ borderColor: 'var(--border-sidebar)' }}>
+              <DarkModeToggle dark={dark} setDark={setDark} />
               <button
                 onClick={() => { setAktivesModul('profil'); setMenuOffen(false) }}
                 className={`nav-link w-full ${aktivesModul === 'profil' ? 'nav-link-active' : 'nav-link-inactive'}`}
