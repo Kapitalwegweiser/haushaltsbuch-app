@@ -530,15 +530,6 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
             </div>
           </div>
 
-          {/* KI-Steuercheck — immer sichtbar wenn Immobilie + Steuerjahr gewählt */}
-          {immobilie && filterModus === 'jahr' && (
-            <KiSteuercheckBox
-              immobilie={immobilie}
-              filterJahr={filterJahr}
-              setImmobilien={setImmobilien || (() => {})}
-            />
-          )}
-
           {/* Kein Ergebnis */}
           {!hatErgebnisse ? (
             <div className="card text-center py-8 border-dashed">
