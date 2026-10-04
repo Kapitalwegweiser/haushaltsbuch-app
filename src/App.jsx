@@ -204,7 +204,7 @@ function AppInner() {
         return budgetSeiten[aktiveSeite] ?? budgetSeiten.dashboard
       case 'immobilien':
         if (aktiveSeite === 'steueruebersicht') return <SteuerUebersichtSeite immobilien={immobilien} setImmobilien={setImmobilien} />
-        return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} />
+        return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} aktiveImmoId={aktiveSeite === 'liste' ? null : aktiveSeite} setAktiveImmoId={id => setAktiveSeite(id ?? 'liste')} />
       case 'versicherungen':
         return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} einnahmen={einnahmen} />
       case 'abos':

@@ -3044,17 +3044,19 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
 }
 
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
-export default function ImmobilienSeite({ immobilien = [], setImmobilien }) {
-  const [ansicht, setAnsicht] = useState('dashboard')
+export default function ImmobilienSeite({ immobilien = [], setImmobilien, aktiveImmoId, setAktiveImmoId }) {
+  const [neuModus, setNeuModus] = useState(false)
   const { user } = useAuth()
 
+  const setze = setAktiveImmoId ?? (() => {})
+
   function speichern(immo) { setImmobilien(immobilien.map(i => i.id === immo.id ? immo : i)) }
-  function neuAnlegen(immo) { setImmobilien([...immobilien, immo]); setAnsicht(immo.id) }
-  function loeschen(id) { setImmobilien(immobilien.filter(i => i.id !== id)); setAnsicht('dashboard') }
+  function neuAnlegen(immo) { setImmobilien([...immobilien, immo]); setze(immo.id) }
+  function loeschen(id) { setImmobilien(immobilien.filter(i => i.id !== id)); setze(null) }
 
-  const aktiveImmo = immobilien.find(i => i.id === ansicht)
+  const aktiveImmo = aktiveImmoId ? immobilien.find(i => i.id === aktiveImmoId) : null
 
-  if (ansicht === 'neu') return <NeuFormular onSpeichern={neuAnlegen} onAbbrechen={() => setAnsicht('dashboard')} />
-  if (aktiveImmo) return <ImmobilieDetail immobilie={aktiveImmo} onSave={speichern} onZurueck={() => setAnsicht('dashboard')} onLoeschen={loeschen} userEmail={user?.email} />
-  return <ImmobilienDashboard immobilien={immobilien} onNeu={() => setAnsicht('neu')} onAuswaehlen={id => setAnsicht(id)} />
+  if (neuModus) return <NeuFormular onSpeichern={neuAnlegen} onAbbrechen={() => setNeuModus(false)} />
+  if (aktiveImmo) return <ImmobilieDetail immobilie={aktiveImmo} onSave={speichern} onZurueck={() => setze(null)} onLoeschen={loeschen} userEmail={user?.email} />
+  return <ImmobilienDashboard immobilien={immobilien} onNeu={() => setNeuModus(true)} onAuswaehlen={id => setze(id)} />
 }
