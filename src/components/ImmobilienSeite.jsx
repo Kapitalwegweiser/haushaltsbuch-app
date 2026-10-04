@@ -402,8 +402,10 @@ function UebersichtTab({ immobilie, onSave }) {
 const LEER_MIETER = {
   id: null, anrede: '', name: '', telefon: '', mietbeginn: '', mietende: '',
   kaltmiete: '', nebenkosten: '', kaution: '', dokument: null,
-  mwst_aktiv: false, mwst_satz: 19,
+  mwst_aktiv: false, mwst_satz: 19, dokumente: [],
 }
+
+const MIETER_DOK_TYPEN = ['Mietvertrag', 'Übergabeprotokoll Einzug', 'Übergabeprotokoll Auszug', 'Kautionsquittung', 'Sonstiges']
 
 function MieterFormular({ initial = LEER_MIETER, onSpeichern, onAbbrechen, titel }) {
   const [form, setForm] = useState({ ...LEER_MIETER, ...initial })
@@ -498,10 +500,62 @@ function MieterFormular({ initial = LEER_MIETER, onSpeichern, onAbbrechen, titel
           )}
         </div>
       </div>
-      <DokumentUpload label="Mietvertrag hochladen" dokument={form.dokument} onChange={dok => setForm({ ...form, dokument: dok })} />
+      {/* Dokumente */}
+      <div className="space-y-2">
+        <p className="label">Dokumente</p>
+        {(form.dokumente || []).map((dok, idx) => (
+          <div key={idx} className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+            <FileText size={14} className="text-brand-500 shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="text-xs font-medium block truncate" style={{ color: 'var(--text-primary)' }}>{dok.typ}</span>
+              <span className="text-[11px] truncate block" style={{ color: 'var(--text-faint)' }}>{dok.name}</span>
+            </span>
+            {dok.pfad && (
+              <button type="button" onClick={() => oeffneDatei(dok.pfad)} className="text-xs text-brand-500 hover:text-brand-600 shrink-0">Öffnen</button>
+            )}
+            <button type="button" onClick={() => setForm(f => ({ ...f, dokumente: f.dokumente.filter((_, i) => i !== idx) }))}
+              className="p-1 text-red-400 hover:text-red-600 shrink-0"><Trash2 size={13} /></button>
+          </div>
+        ))}
+        <MieterDokumentHinzufuegen onAdd={dok => setForm(f => ({ ...f, dokumente: [...(f.dokumente || []), dok] }))} />
+      </div>
       <div className="flex gap-2">
         <button className="btn-primary" onClick={() => { if (form.name) onSpeichern(form) }}><Check size={14} /> Speichern</button>
         <button className="btn-secondary" onClick={onAbbrechen}><X size={14} /> Abbrechen</button>
+      </div>
+    </div>
+  )
+}
+
+function MieterDokumentHinzufuegen({ onAdd }) {
+  const [offen, setOffen] = useState(false)
+  const [typ, setTyp] = useState(MIETER_DOK_TYPEN[0])
+  const [dokument, setDokument] = useState(null)
+
+  function bestaetigen() {
+    if (!dokument) return
+    onAdd({ ...dokument, typ })
+    setDokument(null); setTyp(MIETER_DOK_TYPEN[0]); setOffen(false)
+  }
+
+  if (!offen) return (
+    <button type="button" className="btn-secondary text-sm" onClick={() => setOffen(true)}>
+      <Plus size={14} /> Dokument hinzufügen
+    </button>
+  )
+
+  return (
+    <div className="rounded-xl p-3 space-y-3" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+      <div>
+        <label className="label">Dokumenttyp</label>
+        <select className="input" value={typ} onChange={e => setTyp(e.target.value)}>
+          {MIETER_DOK_TYPEN.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <DokumentUpload label={`${typ} hochladen`} dokument={dokument} onChange={setDokument} />
+      <div className="flex gap-2">
+        <button type="button" className="btn-primary text-sm" onClick={bestaetigen} disabled={!dokument}><Check size={13} /> Hinzufügen</button>
+        <button type="button" className="btn-secondary text-sm" onClick={() => { setOffen(false); setDokument(null) }}><X size={13} /> Abbrechen</button>
       </div>
     </div>
   )
@@ -755,12 +809,27 @@ function MieterTab({ immobilie, onSave }) {
             )}
           </div>
 
-          {m.dokument && (
-            <div className="flex items-center gap-2 p-2.5 bg-white border border-emerald-200 rounded-xl text-sm">
-              <FileText size={15} className="text-brand-500 shrink-0" />
-              <span className="flex-1 truncate text-navy-700 font-medium">{m.dokument.name}</span>
-              <button onClick={() => oeffneDatei(m.dokument.pfad)}
-                className="text-brand-500 hover:text-brand-600 text-xs font-medium shrink-0">Öffnen</button>
+          {/* Dokumente */}
+          {((m.dokumente?.length > 0) || m.dokument) && (
+            <div className="space-y-1.5">
+              <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--text-faint)' }}>Dokumente</p>
+              {/* Legacy: altes einzelnes Dokument */}
+              {m.dokument && !(m.dokumente?.length > 0) && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl text-sm" style={{ background: 'var(--bg-green-tint)', border: '1px solid #c0dfd3' }}>
+                  <FileText size={14} className="text-brand-500 shrink-0" />
+                  <span className="flex-1 truncate font-medium" style={{ color: 'var(--text-primary)' }}>{m.dokument.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-faint)' }}>Mietvertrag</span>
+                  <button onClick={() => oeffneDatei(m.dokument.pfad)} className="text-brand-500 hover:text-brand-600 text-xs font-medium shrink-0">Öffnen</button>
+                </div>
+              )}
+              {(m.dokumente || []).map((dok, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl text-sm" style={{ background: 'var(--bg-green-tint)', border: '1px solid #c0dfd3' }}>
+                  <FileText size={14} className="text-brand-500 shrink-0" />
+                  <span className="flex-1 truncate font-medium" style={{ color: 'var(--text-primary)' }}>{dok.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-faint)' }}>{dok.typ}</span>
+                  {dok.pfad && <button onClick={() => oeffneDatei(dok.pfad)} className="text-brand-500 hover:text-brand-600 text-xs font-medium shrink-0">Öffnen</button>}
+                </div>
+              ))}
             </div>
           )}
 
@@ -824,11 +893,19 @@ function MieterTab({ immobilie, onSave }) {
                       <span>Warm: <strong>{euro((+m.kaltmiete || 0) + (+m.nebenkosten || 0))}</strong></span>
                     )}
                   </div>
-                  {m.dokument && (
-                    <button onClick={() => oeffneDatei(m.dokument.pfad)}
-                      className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600">
-                      <FileText size={12} /> {m.dokument.name}
-                    </button>
+                  {(m.dokumente?.length > 0 || m.dokument) && (
+                    <div className="flex flex-wrap gap-2">
+                      {m.dokument && !(m.dokumente?.length > 0) && (
+                        <button onClick={() => oeffneDatei(m.dokument.pfad)} className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600">
+                          <FileText size={12} /> {m.dokument.name}
+                        </button>
+                      )}
+                      {(m.dokumente || []).map((dok, idx) => dok.pfad && (
+                        <button key={idx} onClick={() => oeffneDatei(dok.pfad)} className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600">
+                          <FileText size={12} /> {dok.typ}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
