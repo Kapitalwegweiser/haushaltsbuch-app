@@ -39,7 +39,8 @@ function LadeScreen() {
 function AppInner() {
   const { user, loading: authLoading, abmelden, meldetSichAb } = useAuth()
   const [aktivesModul, setAktivesModul] = useState('startseite')
-  const [aktiveSeite, setAktiveSeite]   = useState('dashboard')
+  const [aktiveSeite, setAktiveSeite]   = useState('liste')
+  const [aktiveImmoId, setAktiveImmoId] = useState(null)
   const [dark, setDark] = useDarkMode()
 
   // Bei Login immer zur Startseite + Referral verarbeiten
@@ -204,7 +205,7 @@ function AppInner() {
         return budgetSeiten[aktiveSeite] ?? budgetSeiten.dashboard
       case 'immobilien':
         if (aktiveSeite === 'steueruebersicht') return <SteuerUebersichtSeite immobilien={immobilien} setImmobilien={setImmobilien} />
-        return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} aktiveImmoId={aktiveSeite === 'liste' ? null : aktiveSeite} setAktiveImmoId={id => setAktiveSeite(id ?? 'liste')} />
+        return <ImmobilienSeite immobilien={immobilien} setImmobilien={setImmobilien} aktiveImmoId={aktiveImmoId} setAktiveImmoId={setAktiveImmoId} />
       case 'versicherungen':
         return <VersicherungenSeite versicherungen={versicherungen} setVersicherungen={setVersicherungen} einnahmen={einnahmen} />
       case 'abos':
@@ -242,7 +243,7 @@ function AppInner() {
         aktivesModul={aktivesModul}
         setAktivesModul={setAktivesModul}
         aktiveSeite={aktiveSeite}
-        setAktiveSeite={setAktiveSeite}
+        setAktiveSeite={seite => { if (seite === 'liste') setAktiveImmoId(null); setAktiveSeite(seite) }}
         abmelden={abmelden}
         meldetSichAb={meldetSichAb}
         dark={dark}
