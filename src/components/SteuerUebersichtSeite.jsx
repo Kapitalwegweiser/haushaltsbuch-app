@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Building2, Download, Filter, FileText, Receipt, Info, Sparkles, Loader2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { Building2, Download, Filter, FileText, Receipt, Info, Sparkles, Loader2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, AlertTriangle, Car } from 'lucide-react'
 import JSZip from 'jszip'
 import { supabase } from '../lib/supabase'
 
@@ -415,9 +415,15 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
       .sort((a, b) => b.steuerjahr - a.steuerjahr)
   }, [immobilie, filterModus, filterJahr, vonDatum, bisDatum])
 
+  const gefilterteFahrten = useMemo(() => {
+    if (!immobilie) return []
+    return (immobilie.fahrten || []).filter(f => imZeitraum(f.datum))
+  }, [immobilie, filterModus, filterJahr, vonDatum, bisDatum])
+
   const summeInstandhaltung = gefilterteInstandhaltung.reduce((s, m) => s + (Number(m.betrag) || 0), 0)
   const summeSteuern = gefilterteSteuern.reduce((s, e) => s + (Number(e.betrag) || 0), 0)
-  const summeGesamt = summeInstandhaltung + summeSteuern
+  const summeFahrten = gefilterteFahrten.reduce((s, f) => s + (Number(f.km) || 0) * 2 * (Number(f.anzahl) || 1) * 0.30, 0)
+  const summeGesamt = summeInstandhaltung + summeSteuern + summeFahrten
 
   const ihMitBeleg = gefilterteInstandhaltung.filter(m => m.dokument instanceof File)
   const stMitBeleg = gefilterteSteuern.filter(s => s.dokument instanceof File)
@@ -473,7 +479,7 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
     }
   }
 
-  const hatErgebnisse = gefilterteInstandhaltung.length > 0 || gefilterteSteuern.length > 0
+  const hatErgebnisse = gefilterteInstandhaltung.length > 0 || gefilterteSteuern.length > 0 || gefilterteFahrten.length > 0
 
   return (
     <div className="space-y-6">
@@ -549,6 +555,11 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
                   <p className="label mb-2">Grundsteuer</p>
                   <p className="text-base font-serif font-semibold text-navy-700">{euro(summeSteuern)}</p>
                   <p className="text-[10px] text-amber-600 mt-1 font-medium">Anlage V · Zeile 14</p>
+                </div>
+                <div className="card text-center">
+                  <p className="label mb-2">Fahrtkosten</p>
+                  <p className="text-base font-serif font-semibold text-navy-700">{euro(summeFahrten)}</p>
+                  <p className="text-[10px] mt-1 font-medium" style={{ color: '#1a7ea8' }}>Anlage V · Zeile 31</p>
                 </div>
                 <div className="card text-center" style={{ borderLeftWidth: '4px', borderLeftColor: '#6b5c4d' }}>
                   <p className="label mb-2">Werbungskosten</p>
@@ -657,6 +668,50 @@ export default function SteuerUebersichtSeite({ immobilien = [], setImmobilien }
                       <span />
                       <span className="text-sm font-semibold text-navy-600">Summe Zeile 14</span>
                       <span className="text-sm font-bold text-navy-700 text-right">{euro(summeSteuern)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fahrtkosten */}
+              {gefilterteFahrten.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#1a7ea8' }} />
+                      <p className="text-xs font-semibold text-navy-600 uppercase tracking-widest">Fahrtkosten zur Immobilie</p>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border" style={{ background: '#e8f5fc', color: '#1a7ea8', borderColor: '#b8dff0' }}>Anlage V · Zeile 31</span>
+                  </div>
+                  <div className="card p-0 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b" style={{ background: '#f7f3ed', borderColor: '#e8dece' }}>
+                      <div className="grid grid-cols-[90px_1fr_60px_auto] gap-3 text-[10px] text-navy-400 uppercase tracking-widest font-semibold">
+                        <span>Datum</span><span>Anlass</span><span className="text-right">km</span><span className="text-right">Absetzbar</span>
+                      </div>
+                    </div>
+                    {gefilterteFahrten.map((f, i) => {
+                      const kmGesamt = (Number(f.km) || 0) * 2 * (Number(f.anzahl) || 1)
+                      const betrag = kmGesamt * 0.30
+                      return (
+                        <div key={f.id}
+                          className={`px-4 py-3 grid grid-cols-[90px_1fr_60px_auto] gap-3 items-center ${i < gefilterteFahrten.length - 1 ? 'border-b' : ''}`}
+                          style={{ borderColor: '#f0e8dc' }}>
+                          <span className="text-xs text-navy-400">{f.datum ? new Date(f.datum).toLocaleDateString('de-DE') : '—'}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm text-navy-700">{f.anlass || '—'}</p>
+                            {Number(f.anzahl) > 1 && <p className="text-[10px] text-navy-400">{f.anzahl}× je {f.km} km</p>}
+                          </div>
+                          <span className="text-xs text-navy-500 text-right">{kmGesamt} km</span>
+                          <span className="text-sm font-semibold text-right" style={{ color: '#1a7ea8' }}>{euro(betrag)}</span>
+                        </div>
+                      )
+                    })}
+                    <div className="px-4 py-3 grid grid-cols-[90px_1fr_60px_auto] gap-3 border-t" style={{ background: '#f7f3ed', borderColor: '#d8ccba' }}>
+                      <span /><span className="text-sm font-semibold text-navy-600">Summe Zeile 31</span>
+                      <span className="text-xs text-navy-500 text-right font-medium">
+                        {gefilterteFahrten.reduce((s, f) => s + (Number(f.km) || 0) * 2 * (Number(f.anzahl) || 1), 0)} km
+                      </span>
+                      <span className="text-sm font-bold text-right" style={{ color: '#1a7ea8' }}>{euro(summeFahrten)}</span>
                     </div>
                   </div>
                 </div>
