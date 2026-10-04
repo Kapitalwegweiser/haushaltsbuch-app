@@ -3044,7 +3044,7 @@ function ImmobilienDashboard({ immobilien, onNeu, onAuswaehlen }) {
 }
 
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
-export default function ImmobilienSeite({ immobilien: immobilienProp = [], setImmobilien }) {
+export default function ImmobilienSeite({ immobilien: immobilienProp = [], setImmobilien, onZurStartseite }) {
   const [immobilien, setLokal] = useState(immobilienProp)
   const [ansicht, setAnsicht] = useState('dashboard')
   const { user } = useAuth()
@@ -3057,6 +3057,6 @@ export default function ImmobilienSeite({ immobilien: immobilienProp = [], setIm
   const aktiveImmo = immobilien.find(i => i.id === ansicht)
 
   if (ansicht === 'neu') return <NeuFormular onSpeichern={neuAnlegen} onAbbrechen={() => setAnsicht('dashboard')} />
-  if (aktiveImmo) return <ImmobilieDetail immobilie={aktiveImmo} onSave={speichern} onZurueck={() => setAnsicht('dashboard')} onLoeschen={loeschen} userEmail={user?.email} />
+  if (aktiveImmo) return <ImmobilieDetail immobilie={aktiveImmo} onSave={speichern} onZurueck={onZurStartseite ?? (() => setAnsicht('dashboard'))} onLoeschen={loeschen} userEmail={user?.email} />
   return <ImmobilienDashboard immobilien={immobilien} onNeu={() => setAnsicht('neu')} onAuswaehlen={id => setAnsicht(id)} />
 }
