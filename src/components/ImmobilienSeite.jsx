@@ -5,7 +5,7 @@ import {
   Building2, MapPin, Maximize2, DoorOpen, Euro, Plus, ChevronLeft,
   User, Wrench, Landmark, Edit2, Trash2, Check, X, Upload, FileText,
   Calendar, AlertCircle, Home, ChevronDown, ChevronUp, Calculator, TrendingDown,
-  Users, StickyNote, Download, Filter, Sparkles, Loader2, TrendingUp, Info, Receipt, AlertTriangle
+  Users, StickyNote, Download, Filter, Sparkles, Loader2, TrendingUp, Info, Receipt, AlertTriangle, Car
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import JSZip from 'jszip'
@@ -1301,6 +1301,165 @@ function InstandhaltungTab({ immobilie, onSave }) {
   )
 }
 
+// ─── Fahrten-Block (innerhalb Steuern-Tab) ────────────────────────────────────
+const KM_PAUSCHALE = 0.30
+const LEER_FAHRT = { id: null, datum: '', anlass: '', km: '', anzahl: '1' }
+
+function FahrtenBlock({ immobilie, onSave }) {
+  const [formOffen, setFormOffen] = useState(false)
+  const [form, setForm] = useState(LEER_FAHRT)
+  const [bearbeitungId, setBearbeitungId] = useState(null)
+  const [filterJahr, setFilterJahr] = useState(String(new Date().getFullYear()))
+
+  const alleJahre = useMemo(() => {
+    const jahre = new Set((immobilie.fahrten || []).map(f => f.datum?.slice(0, 4)).filter(Boolean))
+    jahre.add(String(new Date().getFullYear()))
+    return [...jahre].sort((a, b) => b.localeCompare(a))
+  }, [immobilie.fahrten])
+
+  const fahrtenJahr = (immobilie.fahrten || [])
+    .filter(f => f.datum?.startsWith(filterJahr))
+    .sort((a, b) => b.datum.localeCompare(a.datum))
+
+  const gesamtKm = fahrtenJahr.reduce((s, f) => s + (Number(f.km) || 0) * 2 * (Number(f.anzahl) || 1), 0)
+  const absetzbar = gesamtKm * KM_PAUSCHALE
+
+  function speichern() {
+    if (!form.datum || !form.km) return
+    const eintrag = { ...form, km: Number(form.km), anzahl: Number(form.anzahl) || 1, id: bearbeitungId ?? Date.now().toString() }
+    const liste = bearbeitungId
+      ? (immobilie.fahrten || []).map(f => f.id === bearbeitungId ? eintrag : f)
+      : [...(immobilie.fahrten || []), eintrag]
+    onSave({ ...immobilie, fahrten: liste })
+    setForm(LEER_FAHRT); setBearbeitungId(null); setFormOffen(false)
+  }
+
+  function loeschen(id) {
+    onSave({ ...immobilie, fahrten: (immobilie.fahrten || []).filter(f => f.id !== id) })
+  }
+
+  return (
+    <div className="space-y-4 pt-2">
+      {/* Trennlinie */}
+      <div className="border-t" style={{ borderColor: 'var(--border)' }} />
+
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Car size={16} className="text-brand-500" />
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Fahrten zur Immobilie</p>
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>0,30 €/km · Anlage V, Zeile 31</p>
+          </div>
+        </div>
+        {alleJahre.length > 1 && (
+          <select className="input w-28 text-sm" value={filterJahr} onChange={e => setFilterJahr(e.target.value)}>
+            {alleJahre.map(j => <option key={j} value={j}>{j}</option>)}
+          </select>
+        )}
+      </div>
+
+      {/* KPI-Kacheln */}
+      {fahrtenJahr.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card text-center p-3">
+            <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Fahrten</p>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              {fahrtenJahr.reduce((s, f) => s + (Number(f.anzahl) || 1), 0)}
+            </p>
+          </div>
+          <div className="card text-center p-3">
+            <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Gesamt km</p>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{gesamtKm.toLocaleString('de-DE')} km</p>
+          </div>
+          <div className="card text-center p-3">
+            <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Absetzbar</p>
+            <p className="text-lg font-bold text-brand-500">{euro(absetzbar)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Formular */}
+      {!formOffen ? (
+        <button className="btn-secondary text-sm" onClick={() => setFormOffen(true)}><Plus size={14} /> Fahrt eintragen</button>
+      ) : (
+        <div className="card space-y-4">
+          <h4 className="font-serif text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{bearbeitungId ? 'Bearbeiten' : 'Neue Fahrt'}</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Datum</label>
+              <input className="input" type="date" value={form.datum} onChange={e => setForm({ ...form, datum: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Anzahl Fahrten</label>
+              <input className="input" type="number" min="1" value={form.anzahl} onChange={e => setForm({ ...form, anzahl: e.target.value })} placeholder="1" />
+            </div>
+            <div>
+              <label className="label">Einfache Strecke (km)</label>
+              <input className="input" type="number" min="0" value={form.km} onChange={e => setForm({ ...form, km: e.target.value })} placeholder="z.B. 25" />
+            </div>
+            <div>
+              <label className="label">Absetzbar</label>
+              <div className="input flex items-center" style={{ background: 'var(--bg-hover)', cursor: 'default', color: 'var(--text-muted)' }}>
+                {form.km && form.anzahl ? euro((Number(form.km) || 0) * 2 * (Number(form.anzahl) || 1) * KM_PAUSCHALE) : '—'}
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="label">Anlass</label>
+              <input className="input" value={form.anlass} onChange={e => setForm({ ...form, anlass: e.target.value })} placeholder="z.B. Handwerker-Termin, Mieterübergabe…" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={speichern}><Check size={14} /> Speichern</button>
+            <button className="btn-secondary" onClick={() => { setFormOffen(false); setForm(LEER_FAHRT); setBearbeitungId(null) }}><X size={14} /> Abbrechen</button>
+          </div>
+        </div>
+      )}
+
+      {/* Liste */}
+      {fahrtenJahr.length === 0 ? (
+        <p className="text-sm text-center py-4" style={{ color: 'var(--text-faint)' }}>Noch keine Fahrten für {filterJahr}</p>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <div className="px-4 py-2 border-b grid grid-cols-[90px_1fr_60px_80px_auto] gap-2 text-xs uppercase tracking-widest font-medium" style={{ background: 'var(--bg-hover)', borderColor: 'var(--border)', color: 'var(--text-faint)' }}>
+            <span>Datum</span>
+            <span>Anlass</span>
+            <span className="text-right">km (×2)</span>
+            <span className="text-right">Absetzbar</span>
+            <span />
+          </div>
+          {fahrtenJahr.map((f, i) => {
+            const kmGesamt = (Number(f.km) || 0) * 2 * (Number(f.anzahl) || 1)
+            const betrag = kmGesamt * KM_PAUSCHALE
+            return (
+              <div key={f.id} className={`px-4 py-2.5 grid grid-cols-[90px_1fr_60px_80px_auto] gap-2 items-center hover:bg-navy-50/40 ${i < fahrtenJahr.length - 1 ? 'border-b' : ''}`} style={{ borderColor: 'var(--border)' }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{f.datum ? new Date(f.datum).toLocaleDateString('de-DE') : '—'}</span>
+                <div className="min-w-0">
+                  <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{f.anlass || '—'}</p>
+                  {Number(f.anzahl) > 1 && <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{f.anzahl}× je {f.km} km</p>}
+                </div>
+                <span className="text-xs text-right" style={{ color: 'var(--text-muted)' }}>{kmGesamt} km</span>
+                <span className="text-sm font-semibold text-right text-brand-500">{euro(betrag)}</span>
+                <div className="flex gap-1 justify-end">
+                  <button onClick={() => { setForm({ ...f, km: f.km?.toString(), anzahl: f.anzahl?.toString() }); setBearbeitungId(f.id); setFormOffen(true) }}
+                    className="p-1 rounded hover:bg-navy-100/60" style={{ color: 'var(--text-faint)' }}><Edit2 size={13} /></button>
+                  <button onClick={() => loeschen(f.id)} className="p-1 rounded hover:bg-red-50 text-red-400"><Trash2 size={13} /></button>
+                </div>
+              </div>
+            )
+          })}
+          <div className="px-4 py-3 border-t grid grid-cols-[90px_1fr_60px_80px_auto] gap-2" style={{ background: 'var(--bg-hover)', borderColor: 'var(--border)' }}>
+            <span /><span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Gesamt {filterJahr}</span>
+            <span className="text-xs text-right font-medium" style={{ color: 'var(--text-muted)' }}>{gesamtKm} km</span>
+            <span className="text-base font-bold text-right text-brand-500">{euro(absetzbar)}</span>
+            <span />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Steuern-Tab ──────────────────────────────────────────────────────────────
 const LEER_STEUER = { id: null, steuerjahr: String(new Date().getFullYear()), betrag: '', beschreibung: 'Grundsteuer B', dokument: null }
 
@@ -1419,6 +1578,8 @@ function SteuernTab({ immobilie, onSave }) {
           </div>
         </div>
       )}
+
+      <FahrtenBlock immobilie={immobilie} onSave={onSave} />
     </div>
   )
 }
