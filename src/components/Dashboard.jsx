@@ -274,16 +274,18 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
     const sonderInkl = einnahmen
       .filter(e => e.typ === 'sondereinnahme' && e.monat === monatNr)
       .reduce((s, e) => s + e.betrag, 0)
-    const jahresKosten = fixkosten
-      .filter(f => f.intervall === 'jaehrlich' && f.abbuchungsmonat === monatNr && !istSparEintrag(f))
-      .reduce((s, f) => s + f.betrag, 0)
-    const monatlicheFixkosten = fixkosten
-      .filter(f => f.intervall !== 'jaehrlich' && !istSparEintrag(f))
+    // Basis: monatlicher Äquivalent aller Ausgaben (entspricht KPI)
+    const monatlicheBasis = fixkosten
+      .filter(f => !istSparEintrag(f))
       .reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
+    // Jahreskosten: im Buchungsmonat den Betrag über den Äquivalent hinaus addieren
+    const jahresZusatz = fixkosten
+      .filter(f => f.intervall === 'jaehrlich' && f.abbuchungsmonat === monatNr && !istSparEintrag(f))
+      .reduce((s, f) => s + (f.betrag - monatlicherBetrag(f.betrag, f.intervall)), 0)
     return {
       monat: name,
       Einnahmen: +(einnahmenSumme + sonderInkl).toFixed(2),
-      Ausgaben: +(monatlicheFixkosten + jahresKosten).toFixed(2),
+      Ausgaben: +(monatlicheBasis + jahresZusatz).toFixed(2),
     }
   })
 
