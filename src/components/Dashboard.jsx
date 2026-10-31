@@ -275,10 +275,10 @@ export default function Dashboard({ fixkosten, einnahmen, abos = [], vereine = [
       .filter(e => e.typ === 'sondereinnahme' && e.monat === monatNr)
       .reduce((s, e) => s + e.betrag, 0)
     const jahresKosten = fixkosten
-      .filter(f => f.intervall === 'jaehrlich' && f.abbuchungsmonat === monatNr)
+      .filter(f => f.intervall === 'jaehrlich' && f.abbuchungsmonat === monatNr && !istSparEintrag(f))
       .reduce((s, f) => s + f.betrag, 0)
     const monatlicheFixkosten = fixkosten
-      .filter(f => f.intervall !== 'jaehrlich')
+      .filter(f => f.intervall !== 'jaehrlich' && !istSparEintrag(f))
       .reduce((s, f) => s + monatlicherBetrag(f.betrag, f.intervall), 0)
     return {
       monat: name,
